@@ -30,10 +30,10 @@ To commit your changes to the current branch:
 
 0. `git pull --rebase` - (optional) It is best practice to always rebase your local commits when you pull before pushing them.
 1. `git add [file]` - Add a file as it looks now to your next commit (stage) OR `git add .` - Add all files
-2. `git commit -m “[descriptive message]”` - commit your staged content as a new commit snapshot
+2. `git commit -m “[descriptive message]”` - Commit your staged content as a new commit snapshot
 3. `git push` - Transmit local branch commits to the remote repository branch
 
-To merge your developemental branch into the project's main branch:
+To merge your developemental branch into the project's main branch (You should only do that after consulting all team members):
 
 1. `git checkout [branch-name]` - Checkout your branch
 2. `git rebase main` - Rebase main branch into your current branch
