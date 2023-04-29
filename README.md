@@ -6,4 +6,4 @@ Real-time visualization of CSI on ESP32
 Follow [this](https://www.bordergate.co.uk/configuring-an-esp32-in-ubuntu-22-04/) guide.
 
 ## How to Contribute
-Follow [this](CONTRIBUTING.md) guide to find out how to start working on the project.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) to find out how to start working on the project.
