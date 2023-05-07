@@ -1,8 +1,7 @@
 [submodule "components/lvgl"]
 	path = components/lvgl
-	url = https://github.com/lvgl/lvgl.git
+	url = git@github.com:huyenngn/lvgl.git
 	branch = release/v7
 [submodule "components/lvgl_esp32_drivers"]
 	path = components/lvgl_esp32_drivers
-	url = https://github.com/lvgl/lvgl_esp32_drivers.git
-	branch = develop/lvgl_7.11.0_idf_5.0
+	url = git@github.com:huyenngn/lvgl_esp32_drivers.git

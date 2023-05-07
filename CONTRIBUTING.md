@@ -5,20 +5,20 @@ Read the [README.md](README.md) before contributing.
 
 Before starting make sure you have the correct access rights by following [this](https://docs.github.com/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) guide and that your git configuration matches that of your GitHub account:
 ```
-git config --global user.name “[your-name]”
-git config --global user.email “[github-email]”
+git config --global user.name [your-name]
+git config --global user.email [github-email]
 ```
 
 Next, clone this git repository:
 ```
-git clone git@github.com:huyenngn/CSI-Visualization-on-ESP32.git
+git clone --recurse git@github.com:huyenngn/CSI-Visualization-on-ESP32.git
 ```
 Finally, you can checkout the project's main branch:
 ```
 cd CSI-Visualization-on-ESP32
 ```
 
-## Make changes
+## Git cheat sheet
 
 You should only make changes to your own branch:
 
