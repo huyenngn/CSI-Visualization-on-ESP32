@@ -36,7 +36,6 @@
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
 static void lv_ex_list_1(void);
-static void draw_grid(lv_obj_t *obj, const lv_area_t *clip_area);
 
 /**********************
  *   APPLICATION MAIN
@@ -131,12 +130,14 @@ static void guiTask(void *pvParameter)
     lv_obj_t *screen = lv_scr_act();
 
     // Create a custom widget to draw the grid
-    lv_obj_t *grid_widget = lv_obj_create(screen, NULL);
-    lv_obj_set_size(grid_widget, LV_HOR_RES, LV_VER_RES);
-    lv_obj_set_pos(grid_widget, 0, 0);
-    grid_widget->design_cb = draw_grid;
+    lv_obj_t *chart = lv_3d_chart_create(screen, NULL);
+    lv_obj_set_size(chart, LV_HOR_RES, LV_VER_RES);
+    lv_obj_set_pos(chart, 0, 0);
 
-    lv_ex_list_1();
+    lv_3d_chart_set_next(chart, 0, 0, 0);
+    lv_3d_chart_set_next(chart, 50, 50, 0);
+
+    // lv_ex_list_1();
 
     while (1)
     {
@@ -185,165 +186,6 @@ static void lv_ex_list_1(void)
     lv_obj_set_event_cb(list_btn, event_handler);
 
     lv_obj_set_hidden(list1, true);
-}
-
-// (255,0,0) -> (255,255,0) -> (0,255,0) -> (0,255,255) -> 
-// (0,0,255) -> (255,0,255) -> (255,0,0)
-typedef struct {
-    lv_coord_t x;
-    lv_coord_t y;
-    lv_color_t color;
-} lv_3d_chart_point_t;
-
-typedef struct {
-    /*No inherited ext*/ /*Ext. of ancestor*/
-    /*New data for this type */
-    lv_ll_t points_ll;
-} lv_3d_chart_ext_t;
-
-lv_obj_t * lv_3d_chart_create(lv_obj_t * par, const lv_obj_t * copy) {
-    // Create a custom widget to draw the grid
-    lv_obj_t *chart = lv_obj_create(par, copy);
-    LV_ASSERT_MEM(chart);
-    if(chart == NULL) return NULL;
-
-    /*Allocate the object type specific extended data*/
-    lv_3d_chart_ext_t * ext = lv_obj_allocate_ext_attr(chart, sizeof(lv_3d_chart_ext_t));
-    LV_ASSERT_MEM(ext);
-    if(ext == NULL) {
-        lv_obj_del(chart);
-        return NULL;
-    }
-
-    _lv_ll_init(&ext->points_ll, sizeof(lv_3d_chart_point_t));
-
-    chart->design_cb = lv_3d_chart_design;
-
-    LV_LOG_INFO("chart created");
-
-    return chart;
-}
-
-void lv_3d_chart_set_next(lv_obj_t * chart, lv_coord_t x, lv_coord_t z) {
-    LV_ASSERT_OBJ(chart, LV_OBJX_NAME);
-
-    lv_3d_chart_ext_t * ext    = lv_obj_get_ext_attr(chart);
-    lv_3d_chart_point_t * point = _lv_ll_ins_head(&ext->points_ll);
-    LV_ASSERT_MEM(point);
-    if(point == NULL) return NULL;
-
-    point->x = x;
-    point->y = z;
-    point->color = LV_COLOR_MAKE(255,0,0);
-}
-
-static lv_design_res_t lv_3d_chart_design(lv_obj_t * chart, const lv_area_t * clip_area) {
-    draw_grid(chart, clip_area);
-    draw_points(chart, clip_area);
-
-    return LV_DESIGN_RES_OK;
-}
-
-static void draw_points(lv_obj_t * chart, const lv_area_t *clip_area) {
-    lv_3d_chart_ext_t * ext = lv_obj_get_ext_attr(chart);
-    if(_lv_ll_is_empty(&ext->points_ll)) return;
-
-    lv_point_t p1;
-    lv_point_t p2;
-    lv_3d_chart_point_t * point;
-
-    lv_draw_line_dsc_t line_dsc;
-    lv_draw_line_dsc_init(&line_dsc);
-    lv_obj_init_draw_line_dsc(chart, LV_CHART_PART_CURSOR, &line_dsc);
-
-    lv_draw_rect_dsc_t point_dsc;
-    lv_draw_rect_dsc_init(&point_dsc);
-    point_dsc.bg_opa = line_dsc.opa;
-    point_dsc.radius = LV_RADIUS_CIRCLE;
-
-    lv_coord_t point_radius = lv_obj_get_style_size(chart, LV_CHART_PART_CURSOR);
-
-    /*Do not bother with line ending is the point will over it*/
-    if(point_radius > line_dsc.width / 2) line_dsc.raw_end = 1;
-
-    /*Go through all cursor lines*/
-    _LV_LL_READ_BACK(ext->points_ll, point) {
-        line_dsc.color = point->color;
-        point_dsc.bg_color = point->color;
-
-        if(point_radius) {
-            lv_area_t point_area;
-
-            point_area.x1 = clip_area->x1 + point->x - point_radius;
-            point_area.x2 = clip_area->x1 + point->x + point_radius;
-
-            point_area.y1 = clip_area->y1 + point->y - point_radius;
-            point_area.y2 = clip_area->y1 + point->y + point_radius;
-
-            /*Don't limit to `series_mask` to get full circles on the ends*/
-            lv_draw_rect(&point_area, clip_area, &point_dsc);
-        }
-
-    }
-}
-
-static void draw_grid(lv_obj_t *obj, const lv_area_t *clip_area)
-{
-    lv_draw_line_dsc_t line_dsc;
-    lv_draw_line_dsc_init(&line_dsc);
-    lv_obj_init_draw_line_dsc(obj, LV_CHART_PART_BG, &line_dsc);
-
-    double mid_y = LV_VER_RES / 3;
-    double mid_x = LV_HOR_RES / 2;
-    double left_x = 1.73 * (mid_y);
-    double m = mid_y / left_x;
-
-    double x, y, n;
-
-    for (x = 0; x < mid_x + 20; x += 10)
-    {
-        lv_point_t p1;
-        lv_point_t p2;
-        p1.x = x + mid_x;
-        p1.y = 0;
-        p2.x = x + mid_x;
-        p2.y = m * x + mid_y;
-        lv_draw_line(&p1, &p2, clip_area, &line_dsc);
-        p2.x = x + mid_x;
-        p2.y = m * x + mid_y;
-        p1.y = LV_HOR_RES;
-        n = p2.y + (m * p2.x);
-        p1.x = (p1.y - n) / -m;
-        lv_draw_line(&p1, &p2, clip_area, &line_dsc);
-        p1.x = mid_x - x;
-        p1.y = 0;
-        p2.x = mid_x - x;
-        p2.y = m * x + mid_y;
-        lv_draw_line(&p1, &p2, clip_area, &line_dsc);
-        p2.x = mid_x - x;
-        p2.y = m * x + mid_y;
-        p1.y = LV_HOR_RES;
-        n = p2.y - (m * p2.x);
-        p1.x = (p1.y - n) / m;
-        lv_draw_line(&p1, &p2, clip_area, &line_dsc);
-    }
-
-    // Draw horizontal lines
-    for (y = 5; y < LV_VER_RES - 10; y += 10)
-    {
-        lv_point_t p1;
-        lv_point_t p2;
-        p1.x = 0;
-        p1.y = y;
-        p2.x = mid_x;
-        p2.y = -m * mid_x + y;
-        lv_draw_line(&p1, &p2, clip_area, &line_dsc);
-        p1.x = mid_x;
-        p1.y = -m * mid_x + y;
-        p2.x = LV_HOR_RES;
-        p2.y = y;
-        lv_draw_line(&p1, &p2, clip_area, &line_dsc);
-    }
 }
 
 static void lv_tick_task(void *arg)
