@@ -135,7 +135,14 @@ static void guiTask(void *pvParameter)
     lv_obj_set_pos(chart, 0, 0);
 
     lv_3d_chart_set_next(chart, 0, 0, 0);
+    lv_3d_chart_set_next(chart, 0, 50, 0);
     lv_3d_chart_set_next(chart, 50, 50, 0);
+    lv_3d_chart_set_next(chart, 50, 0, 0);
+
+    lv_3d_chart_set_next(chart, 0, 0, 50);
+    lv_3d_chart_set_next(chart, 0, 50, 50);
+    lv_3d_chart_set_next(chart, 50, 50, 50);
+    lv_3d_chart_set_next(chart, 50, 0, 50);
 
     // lv_ex_list_1();
 
