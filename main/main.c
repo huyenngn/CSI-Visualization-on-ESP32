@@ -143,9 +143,13 @@ static void guiTask(void *pvParameter)
     lv_3d_chart_set_next(chart, 100, 0, 100);
 
     lv_3d_chart_set_next(chart, 150, 0, 0);
+    lv_3d_chart_set_next(chart, 150, 0, 25);
     lv_3d_chart_set_next(chart, 150, 0, 50);
+    lv_3d_chart_set_next(chart, 150, 0, 75);
     lv_3d_chart_set_next(chart, 150, 0, 100);
+    lv_3d_chart_set_next(chart, 150, 0, 125);
     lv_3d_chart_set_next(chart, 150, 0, 150);
+    lv_3d_chart_set_next(chart, 150, 0, 175);
     lv_3d_chart_set_next(chart, 150, 0, 200);
 
     show_menu();
