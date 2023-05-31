@@ -35,7 +35,7 @@
  **********************/
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
-static void lv_ex_list_1(void);
+static void show_menu(void);
 
 /**********************
  *   APPLICATION MAIN
@@ -131,20 +131,24 @@ static void guiTask(void *pvParameter)
 
     // Create a custom widget to draw the grid
     lv_obj_t *chart = lv_3d_chart_create(screen, NULL);
-    lv_obj_set_size(chart, LV_HOR_RES, LV_VER_RES);
-    lv_obj_set_pos(chart, 0, 0);
 
     lv_3d_chart_set_next(chart, 0, 0, 0);
-    lv_3d_chart_set_next(chart, 0, 50, 0);
-    lv_3d_chart_set_next(chart, 50, 50, 0);
-    lv_3d_chart_set_next(chart, 50, 0, 0);
+    lv_3d_chart_set_next(chart, 0, 100, 0);
+    lv_3d_chart_set_next(chart, 100, 100, 0);
+    lv_3d_chart_set_next(chart, 100, 0, 0);
 
-    lv_3d_chart_set_next(chart, 0, 0, 50);
-    lv_3d_chart_set_next(chart, 0, 50, 50);
-    lv_3d_chart_set_next(chart, 50, 50, 50);
-    lv_3d_chart_set_next(chart, 50, 0, 50);
+    lv_3d_chart_set_next(chart, 0, 0, 100);
+    lv_3d_chart_set_next(chart, 0, 100, 100);
+    lv_3d_chart_set_next(chart, 100, 100, 100);
+    lv_3d_chart_set_next(chart, 100, 0, 100);
 
-    // lv_ex_list_1();
+    lv_3d_chart_set_next(chart, 150, 0, 0);
+    lv_3d_chart_set_next(chart, 150, 0, 50);
+    lv_3d_chart_set_next(chart, 150, 0, 100);
+    lv_3d_chart_set_next(chart, 150, 0, 150);
+    lv_3d_chart_set_next(chart, 150, 0, 200);
+
+    show_menu();
 
     while (1)
     {
@@ -166,34 +170,32 @@ static void guiTask(void *pvParameter)
 #endif
     vTaskDelete(NULL);
 }
+
+
 static void event_handler(lv_obj_t * obj, lv_event_t event)
 {
-    if(event == LV_EVENT_CLICKED) {
-        printf("Clicked: %s\n", lv_list_get_btn_text(obj));
+    if(event == LV_EVENT_VALUE_CHANGED) {
+        const char * txt = lv_btnmatrix_get_active_btn_text(obj);
+
+        printf("%s was pressed\n", txt);
     }
 }
 
-static void lv_ex_list_1(void)
+
+static const char * btnm_map[] = {"1", "2", "3", "4", "5", "\n",
+                                  "6", "7", "8", "9", "0", "\n",
+                                  "Select", ""};
+
+static void show_menu(void)
 {
-    /*Create a list*/
-    lv_obj_t * list1 = lv_list_create(lv_scr_act(), NULL);
-    lv_obj_set_size(list1, 100, LV_VER_RES-10);
-    lv_obj_align(list1, NULL, LV_ALIGN_IN_LEFT_MID, 5, 0);
+    lv_obj_t * btnm1 = lv_btnmatrix_create(lv_scr_act(), NULL);
+    lv_obj_set_size(btnm1, 135, 80);
+    lv_obj_align(btnm1, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
 
-    /*Add buttons to the list*/
-    lv_obj_t * list_btn;
-
-    list_btn = lv_list_add_btn(list1, LV_SYMBOL_CLOSE, "Close");
-    lv_obj_set_event_cb(list_btn, event_handler);
-
-    list_btn = lv_list_add_btn(list1, LV_SYMBOL_SETTINGS, "Settings");
-    lv_obj_set_event_cb(list_btn, event_handler);
-
-    list_btn = lv_list_add_btn(list1, LV_SYMBOL_REFRESH, "Refresh");
-    lv_obj_set_event_cb(list_btn, event_handler);
-
-    lv_obj_set_hidden(list1, true);
+    lv_btnmatrix_set_map(btnm1, btnm_map);
+    lv_obj_set_event_cb(btnm1, event_handler);
 }
+
 
 static void lv_tick_task(void *arg)
 {
