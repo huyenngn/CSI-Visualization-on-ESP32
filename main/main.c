@@ -134,23 +134,23 @@ static void guiTask(void *pvParameter)
 
     lv_3d_chart_add_cursor(chart, 0, 0, 0);
     lv_3d_chart_add_cursor(chart, 0, 100, 0);
-    lv_3d_chart_add_cursor(chart, 50, 100, 0);
-    lv_3d_chart_add_cursor(chart, 50, 0, 0);
+    lv_3d_chart_add_cursor(chart, 100, 100, 0);
+    lv_3d_chart_add_cursor(chart, 100, 0, 0);
 
     lv_3d_chart_add_cursor(chart, 0, 0, 100);
     lv_3d_chart_add_cursor(chart, 0, 100, 100);
-    lv_3d_chart_add_cursor(chart, 50, 100, 100);
-    lv_3d_chart_add_cursor(chart, 50, 0, 100);
+    lv_3d_chart_add_cursor(chart, 100, 100, 100);
+    lv_3d_chart_add_cursor(chart, 100, 0, 100);
 
-    lv_3d_chart_add_cursor(chart, 75, 0, 0);
-    lv_3d_chart_add_cursor(chart, 75, 0, 25);
-    lv_3d_chart_add_cursor(chart, 75, 0, 50);
-    lv_3d_chart_add_cursor(chart, 75, 0, 75);
-    lv_3d_chart_add_cursor(chart, 75, 0, 100);
-    lv_3d_chart_add_cursor(chart, 75, 0, 125);
-    lv_3d_chart_add_cursor(chart, 75, 0, 150);
-    lv_3d_chart_add_cursor(chart, 75, 0, 175);
-    lv_3d_chart_add_cursor(chart, 75, 0, 200);
+    lv_3d_chart_add_cursor(chart, 150, 0, 0);
+    lv_3d_chart_add_cursor(chart, 150, 0, 25);
+    lv_3d_chart_add_cursor(chart, 150, 0, 50);
+    lv_3d_chart_add_cursor(chart, 150, 0, 75);
+    lv_3d_chart_add_cursor(chart, 150, 0, 100);
+    lv_3d_chart_add_cursor(chart, 150, 0, 125);
+    lv_3d_chart_add_cursor(chart, 150, 0, 150);
+    lv_3d_chart_add_cursor(chart, 150, 0, 175);
+    lv_3d_chart_add_cursor(chart, 150, 0, 200);
 
     show_menu();
 
@@ -173,6 +173,13 @@ static void guiTask(void *pvParameter)
     free(buf2);
 #endif
     vTaskDelete(NULL);
+}
+
+static void lv_tick_task(void *arg)
+{
+    (void)arg;
+
+    lv_tick_inc(LV_TICK_PERIOD_MS);
 }
 
 
@@ -200,10 +207,3 @@ static void show_menu(void)
     lv_obj_set_event_cb(btnm1, event_handler);
 }
 
-
-static void lv_tick_task(void *arg)
-{
-    (void)arg;
-
-    lv_tick_inc(LV_TICK_PERIOD_MS);
-}
