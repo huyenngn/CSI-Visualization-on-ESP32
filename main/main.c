@@ -132,25 +132,25 @@ static void guiTask(void *pvParameter)
     // Create a custom widget to draw the grid
     lv_obj_t *chart = lv_3d_chart_create(screen, NULL);
 
-    lv_3d_chart_set_next(chart, 0, 0, 0);
-    lv_3d_chart_set_next(chart, 0, 100, 0);
-    lv_3d_chart_set_next(chart, 100, 100, 0);
-    lv_3d_chart_set_next(chart, 100, 0, 0);
+    lv_3d_chart_add_cursor(chart, 0, 0, 0);
+    lv_3d_chart_add_cursor(chart, 0, 100, 0);
+    lv_3d_chart_add_cursor(chart, 50, 100, 0);
+    lv_3d_chart_add_cursor(chart, 50, 0, 0);
 
-    lv_3d_chart_set_next(chart, 0, 0, 100);
-    lv_3d_chart_set_next(chart, 0, 100, 100);
-    lv_3d_chart_set_next(chart, 100, 100, 100);
-    lv_3d_chart_set_next(chart, 100, 0, 100);
+    lv_3d_chart_add_cursor(chart, 0, 0, 100);
+    lv_3d_chart_add_cursor(chart, 0, 100, 100);
+    lv_3d_chart_add_cursor(chart, 50, 100, 100);
+    lv_3d_chart_add_cursor(chart, 50, 0, 100);
 
-    lv_3d_chart_set_next(chart, 150, 0, 0);
-    lv_3d_chart_set_next(chart, 150, 0, 25);
-    lv_3d_chart_set_next(chart, 150, 0, 50);
-    lv_3d_chart_set_next(chart, 150, 0, 75);
-    lv_3d_chart_set_next(chart, 150, 0, 100);
-    lv_3d_chart_set_next(chart, 150, 0, 125);
-    lv_3d_chart_set_next(chart, 150, 0, 150);
-    lv_3d_chart_set_next(chart, 150, 0, 175);
-    lv_3d_chart_set_next(chart, 150, 0, 200);
+    lv_3d_chart_add_cursor(chart, 75, 0, 0);
+    lv_3d_chart_add_cursor(chart, 75, 0, 25);
+    lv_3d_chart_add_cursor(chart, 75, 0, 50);
+    lv_3d_chart_add_cursor(chart, 75, 0, 75);
+    lv_3d_chart_add_cursor(chart, 75, 0, 100);
+    lv_3d_chart_add_cursor(chart, 75, 0, 125);
+    lv_3d_chart_add_cursor(chart, 75, 0, 150);
+    lv_3d_chart_add_cursor(chart, 75, 0, 175);
+    lv_3d_chart_add_cursor(chart, 75, 0, 200);
 
     show_menu();
 
