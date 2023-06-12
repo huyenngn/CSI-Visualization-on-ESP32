@@ -29,6 +29,10 @@
  *********************/
 #define TAG "demo"
 #define LV_TICK_PERIOD_MS 1
+#define LEFT_BUTTON_PIN  GPIO_NUM_0
+#define RIGHT_BUTTON_PIN  GPIO_NUM_35
+#define BUTTON_PIN  GPIO_NUM_36
+
 
 /**********************
  *  STATIC PROTOTYPES
@@ -152,12 +156,27 @@ static void guiTask(void *pvParameter)
     lv_3d_chart_add_cursor(chart, 150, 0, 175);
     lv_3d_chart_add_cursor(chart, 150, 0, 200);
 
+    gpio_set_direction(LEFT_BUTTON_PIN, GPIO_MODE_INPUT);
+    gpio_set_direction(RIGHT_BUTTON_PIN, GPIO_MODE_INPUT);
+    gpio_set_direction(BUTTON_PIN, GPIO_MODE_INPUT);
+
+
     show_menu();
 
     while (1)
     {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
         vTaskDelay(pdMS_TO_TICKS(10));
+
+        if (gpio_get_level(BUTTON_PIN) == 0)
+        {
+        } 
+        else if (gpio_get_level(LEFT_BUTTON_PIN) == 0)
+        {
+        }
+        else if (gpio_get_level(RIGHT_BUTTON_PIN) == 0)
+        {
+        }
 
         /* Try to take the semaphore, call lvgl related function on success */
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY))
@@ -183,27 +202,81 @@ static void lv_tick_task(void *arg)
 }
 
 
-static void event_handler(lv_obj_t * obj, lv_event_t event)
+static void plot_handler(lv_obj_t * obj, lv_event_t event)
 {
     if(event == LV_EVENT_VALUE_CHANGED) {
-        const char * txt = lv_btnmatrix_get_active_btn_text(obj);
+        char buf[32];
+        lv_roller_get_selected_str(obj, buf, sizeof(buf));
+        printf("Selected plot: %s\n", buf);
+    }
+}
 
-        printf("%s was pressed\n", txt);
+static void subc_handler(lv_obj_t * obj, lv_event_t event)
+{
+    if(event == LV_EVENT_VALUE_CHANGED) {
+        char buf[32];
+        lv_roller_get_selected_str(obj, buf, sizeof(buf));
+        printf("Selected sub-carrier: %s\n", buf);
     }
 }
 
 
-static const char * btnm_map[] = {"1", "2", "3", "4", "5", "\n",
-                                  "6", "7", "8", "9", "0", "\n",
-                                  "Select", ""};
+static void interval_handler(lv_obj_t * obj, lv_event_t event)
+{
+    if(event == LV_EVENT_VALUE_CHANGED) {
+        char buf[32];
+        lv_roller_get_selected_str(obj, buf, sizeof(buf));
+        printf("Selected update interval: %s\n", buf);
+    }
+}
 
 static void show_menu(void)
 {
-    lv_obj_t * btnm1 = lv_btnmatrix_create(lv_scr_act(), NULL);
-    lv_obj_set_size(btnm1, 135, 80);
-    lv_obj_align(btnm1, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
+    uint16_t width = LV_HOR_RES;
+    uint16_t height = LV_VER_RES-MAX_VER;
+    lv_obj_t *screen = lv_scr_act();
 
-    lv_btnmatrix_set_map(btnm1, btnm_map);
-    lv_obj_set_event_cb(btnm1, event_handler);
+    // Configure Plot
+    lv_obj_t *plot_roller = lv_roller_create(screen, NULL);
+    lv_obj_set_size(plot_roller, width, height/4);
+    lv_obj_align(plot_roller, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, -(2*height/3));
+    lv_roller_set_options(plot_roller,
+                        "amplitude\n"
+                        "phase",
+                        LV_ROLLER_MODE_INFINITE);
+
+    lv_roller_set_visible_row_count(plot_roller, 1);
+    lv_roller_set_anim_time(plot_roller, 0);
+    lv_obj_set_event_cb(plot_roller, plot_handler);
+
+    // Configure OFDM subcarrier
+    lv_obj_t *subc_roller = lv_roller_create(screen, NULL);
+    lv_obj_set_size(subc_roller, width, (height/4));
+    lv_obj_align(subc_roller, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, -(height/3));
+    lv_roller_set_options(subc_roller,
+                        "-21\n"
+                        "-7\n"
+                        "+7\n"
+                        "+21",
+                        LV_ROLLER_MODE_INFINITE);
+
+    lv_roller_set_visible_row_count(subc_roller, 1);
+    lv_roller_set_anim_time(subc_roller, 0);
+    lv_obj_set_event_cb(subc_roller, subc_handler);
+
+    // Configure update interval
+    lv_obj_t *interval_roller = lv_roller_create(screen, NULL);
+    lv_obj_set_size(interval_roller, width, (height/4));
+    lv_obj_align(interval_roller, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
+    lv_roller_set_options(interval_roller,
+                        "10\n"
+                        "20\n"
+                        "30\n"
+                        "40",
+                        LV_ROLLER_MODE_INFINITE);
+
+    lv_roller_set_visible_row_count(interval_roller, 1);
+    lv_roller_set_anim_time(interval_roller, 0);
+    lv_obj_set_event_cb(interval_roller, interval_handler);
 }
 
