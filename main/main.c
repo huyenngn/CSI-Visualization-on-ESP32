@@ -30,8 +30,6 @@
 #define LV_TICK_PERIOD_MS 1
 #define LEFT_BUTTON_PIN GPIO_NUM_0
 #define RIGHT_BUTTON_PIN GPIO_NUM_35
-#define UP_BUTTON_PIN GPIO_NUM_37
-#define DOWN_BUTTON_PIN GPIO_NUM_38
 
 /**********************
  *  STATIC PROTOTYPES
@@ -39,13 +37,15 @@
 static void lv_tick_task(void *arg);
 static void guiTask(void *pvParameter);
 static void show_menu(lv_obj_t *screen);
-static bool ver_keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
-static bool hor_keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
-
+static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
 
 /**********************
  *  STATIC VARIABLES
  **********************/
+static bool switch_tab;
+static uint8_t current_tab = 0;
+static lv_obj_t *tabview;
+static lv_group_t *g;
 static lv_obj_t *plot_label, *subc_label, *interval_label;
 
 /**********************
@@ -140,8 +140,6 @@ static void guiTask(void *pvParameter)
     /* Initialize buttons */
     gpio_set_direction(LEFT_BUTTON_PIN, GPIO_MODE_INPUT);
     gpio_set_direction(RIGHT_BUTTON_PIN, GPIO_MODE_INPUT);
-    gpio_set_direction(UP_BUTTON_PIN, GPIO_MODE_INPUT);
-    gpio_set_direction(DOWN_BUTTON_PIN, GPIO_MODE_INPUT);
 
     // Create a screen
     lv_obj_t *screen = lv_scr_act();
@@ -228,8 +226,8 @@ static void subc_handler(lv_obj_t *obj, lv_event_t event)
 {
     if (event == LV_EVENT_VALUE_CHANGED)
     {
-        static char buf[8];
-        snprintf(buf, 8, "%u kHz", lv_slider_get_value(obj));
+        static char buf[11];
+        snprintf(buf, 11, "%d kHz", lv_slider_get_value(obj));
         lv_label_set_text(subc_label, buf);
     }
 }
@@ -244,39 +242,42 @@ static void interval_handler(lv_obj_t *obj, lv_event_t event)
     }
 }
 
-static bool ver_keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
+static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
 {
     data->state = LV_INDEV_STATE_PR;
 
-    if (gpio_get_level(UP_BUTTON_PIN) == 0)
+    if (gpio_get_level(LEFT_BUTTON_PIN) == 0 && gpio_get_level(RIGHT_BUTTON_PIN) == 0)
     {
-        data->key = LV_KEY_UP;
-    }
-    else if (gpio_get_level(DOWN_BUTTON_PIN) == 0)
-    {
-        data->key = LV_KEY_DOWN;
-    }
-    else
-    {
-        data->state = LV_INDEV_STATE_REL;
-    }
-    return false; /*No buffering now so no more data read*/
-}
+        if (switch_tab)
+        {
 
-static bool hor_keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
-{
-    data->state = LV_INDEV_STATE_PR;
+            if (current_tab == 2)
+            {
+                current_tab = 0;
+            }
+            else
+            {
+                current_tab++;
+            }
+            lv_tabview_set_tab_act(tabview, current_tab, LV_ANIM_ON);
+            lv_group_focus_next(g);
+        }
 
-    if (gpio_get_level(LEFT_BUTTON_PIN) == 0)
+        switch_tab = false;
+    }
+    else if (gpio_get_level(LEFT_BUTTON_PIN) == 0)
     {
         data->key = LV_KEY_LEFT;
+        switch_tab = false;
     }
     else if (gpio_get_level(RIGHT_BUTTON_PIN) == 0)
     {
         data->key = LV_KEY_RIGHT;
+        switch_tab = false;
     }
     else
     {
+        switch_tab = true;
         data->state = LV_INDEV_STATE_REL;
     }
     return false; /*No buffering now so no more data read*/
@@ -284,92 +285,76 @@ static bool hor_keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
 
 static void show_menu(lv_obj_t *screen)
 {
-    // Tileview controller
-    lv_indev_drv_t ver_indev_drv;
-    lv_indev_drv_init(&ver_indev_drv);
-    ver_indev_drv.type = LV_INDEV_TYPE_KEYPAD;
-    ver_indev_drv.read_cb = ver_keyboard_read;
-    lv_indev_t *ver_indev = lv_indev_drv_register(&ver_indev_drv);
-    lv_group_t *view_controller = lv_group_create();
-    lv_indev_set_group(ver_indev, view_controller);
-
-    // Tile controller
-    lv_indev_drv_t hor_indev_drv;
-    lv_indev_drv_init(&hor_indev_drv);
-    hor_indev_drv.type = LV_INDEV_TYPE_KEYPAD;
-    hor_indev_drv.read_cb = hor_keyboard_read;
-    lv_indev_t *hor_indev = lv_indev_drv_register(&hor_indev_drv);
-    lv_group_t *tile_controller = lv_group_create();
-    lv_indev_set_group(hor_indev, tile_controller);
-
     lv_coord_t width = LV_HOR_RES;
     lv_coord_t height = LV_VER_RES - MAX_VER;
 
-    static lv_point_t valid_pos[] = {{0, 0}, {0, 1}, {0, 2}};
-    lv_obj_t *tileview = lv_tileview_create(screen, NULL);
-    lv_tileview_set_valid_positions(tileview, valid_pos, 3);
-    lv_tileview_set_edge_flash(tileview, false);
-    lv_obj_set_size(tileview, width, height);
-    lv_obj_align(tileview, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
-    lv_group_add_obj(view_controller, tileview);
+    // Menu controller
+    lv_indev_drv_t indev_drv;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_KEYPAD;
+    indev_drv.read_cb = keyboard_read;
+    lv_indev_t *indev = lv_indev_drv_register(&indev_drv);
+    g = lv_group_create();
+    lv_indev_set_group(indev, g);
 
-    lv_obj_t *tile1 = lv_obj_create(tileview, NULL);
-    lv_obj_set_size(tile1, width, height);
-    lv_tileview_add_element(tileview, tile1);
+    tabview = lv_tabview_create(screen, NULL);
+    lv_obj_set_size(tabview, width, height);
+    lv_obj_align(tabview, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
+    lv_tabview_set_btns_pos(tabview, LV_TABVIEW_TAB_POS_NONE);
 
-    lv_obj_t *tile2 = lv_obj_create(tileview, tile1);
-    lv_obj_set_pos(tile2, 0, height);
-    lv_tileview_add_element(tileview, tile2);
-
-    lv_obj_t *tile3 = lv_obj_create(tileview, tile1);
-    lv_obj_set_pos(tile3, 0, 2 * height);
-    lv_tileview_add_element(tileview, tile3);
+    lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "Tab 1");
+    lv_page_set_scrlbar_mode(tab1, LV_SCRLBAR_MODE_OFF);
+    lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Tab 2");
+    lv_page_set_scrlbar_mode(tab2, LV_SCRLBAR_MODE_OFF);
+    lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "Tab 3");
+    lv_page_set_scrlbar_mode(tab3, LV_SCRLBAR_MODE_OFF);
 
     // Configure Plot
-    lv_obj_t *plot_slider = lv_slider_create(tile1, NULL);
-    lv_obj_set_width_margin(plot_slider, width);
-    lv_obj_align(plot_slider, NULL, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_t *plot_slider = lv_slider_create(tab1, NULL);
+    lv_obj_set_width(plot_slider, width-10);
+    lv_obj_align(plot_slider, NULL, LV_ALIGN_IN_LEFT_MID, 5, 0);
 
     lv_slider_set_range(plot_slider, 0, 1);
     lv_obj_set_event_cb(plot_slider, plot_handler);
-    lv_group_add_obj(tile_controller, plot_slider);
+    lv_group_add_obj(g, plot_slider);
 
-    plot_label = lv_label_create(tile1, NULL);
+    plot_label = lv_label_create(tab1, NULL);
     lv_obj_set_auto_realign(plot_label, true);
 
     lv_obj_align(plot_label, plot_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
     lv_label_set_text(plot_label, "amplitude");
 
-    lv_obj_t *plot_info = lv_label_create(tile1, NULL);
+    lv_obj_t *plot_info = lv_label_create(tab1, NULL);
     lv_label_set_long_mode(plot_info, LV_LABEL_LONG_SROLL_CIRC);
-    lv_obj_set_width_margin(plot_info, width);
-    lv_obj_align(plot_info, NULL, LV_ALIGN_IN_TOP_LEFT, 10, 10);
+    lv_obj_set_width(plot_info, width-10);
+    lv_obj_align(plot_info, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 10);
 
     lv_label_set_text(plot_info, "Choose plot");
 
     // Configure OFDM subcarrier
-    lv_obj_t *subc_slider = lv_slider_create(tile2, plot_slider);
-    lv_slider_set_range(subc_slider, 0, 100);
+    lv_obj_t *subc_slider = lv_slider_create(tab2, plot_slider);
+    lv_slider_set_type(subc_slider, true);
+    lv_slider_set_range(subc_slider, -27, 27);
     lv_obj_set_event_cb(subc_slider, subc_handler);
-    lv_group_add_obj(tile_controller, subc_slider);
+    lv_group_add_obj(g, subc_slider);
 
-    subc_label = lv_label_create(tile2, plot_label);
+    subc_label = lv_label_create(tab2, plot_label);
     lv_obj_align(subc_label, subc_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
     lv_label_set_text(subc_label, "0 kHz");
 
-    lv_obj_t *subc_info = lv_label_create(tile2, plot_info);
+    lv_obj_t *subc_info = lv_label_create(tab2, plot_info);
     lv_label_set_text(subc_info, "Configure OFDM subcarrier");
 
     // Configure update interval
-    lv_obj_t *interval_slider = lv_slider_create(tile3, plot_slider);
-    lv_slider_set_range(interval_slider, 0, 100);
+    lv_obj_t *interval_slider = lv_slider_create(tab3, plot_slider);
+    lv_slider_set_range(interval_slider, 0, 10);
     lv_obj_set_event_cb(interval_slider, interval_handler);
-    lv_group_add_obj(tile_controller, interval_slider);
+    lv_group_add_obj(g, interval_slider);
 
-    interval_label = lv_label_create(tile3, plot_label);
+    interval_label = lv_label_create(tab3, plot_label);
     lv_obj_align(interval_label, interval_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
     lv_label_set_text(interval_label, "0 kHz");
 
-    lv_obj_t *interval_info = lv_label_create(tile3, plot_info);
+    lv_obj_t *interval_info = lv_label_create(tab3, plot_info);
     lv_label_set_text(interval_info, "Configure update interval");
 }
