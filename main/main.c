@@ -42,6 +42,7 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
 /**********************
  *  STATIC VARIABLES
  **********************/
+static lv_obj_t *amp_chart, *phase_chart;
 static bool switch_tab;
 static uint8_t current_tab = 0;
 static lv_obj_t *tabview;
@@ -147,30 +148,33 @@ static void guiTask(void *pvParameter)
     // Render UI
     show_menu(screen);
 
-    // First chart
-    lv_obj_t *chart = lv_3d_chart_create(screen, NULL);
+    // Amp chart
+    amp_chart = lv_3d_chart_create(screen, NULL);
 
-    lv_3d_chart_add_cursor(chart, 0, 0, 0);
-    lv_3d_chart_add_cursor(chart, 0, 100, 0);
-    lv_3d_chart_add_cursor(chart, 100, 100, 0);
-    lv_3d_chart_add_cursor(chart, 100, 0, 0);
+    lv_3d_chart_add_cursor(amp_chart, 0, 0, 0);
+    lv_3d_chart_add_cursor(amp_chart, 0, 100, 0);
+    lv_3d_chart_add_cursor(amp_chart, 100, 100, 0);
+    lv_3d_chart_add_cursor(amp_chart, 100, 0, 0);
 
-    lv_3d_chart_add_cursor(chart, 0, 0, 100);
-    lv_3d_chart_add_cursor(chart, 0, 100, 100);
-    lv_3d_chart_add_cursor(chart, 100, 100, 100);
-    lv_3d_chart_add_cursor(chart, 100, 0, 100);
+    lv_3d_chart_add_cursor(amp_chart, 0, 0, 100);
+    lv_3d_chart_add_cursor(amp_chart, 0, 100, 100);
+    lv_3d_chart_add_cursor(amp_chart, 100, 100, 100);
+    lv_3d_chart_add_cursor(amp_chart, 100, 0, 100);
 
-    lv_3d_chart_add_cursor(chart, 150, 0, 0);
-    lv_3d_chart_add_cursor(chart, 150, 0, 25);
-    lv_3d_chart_add_cursor(chart, 150, 0, 50);
-    lv_3d_chart_add_cursor(chart, 150, 0, 75);
-    lv_3d_chart_add_cursor(chart, 150, 0, 100);
-    lv_3d_chart_add_cursor(chart, 150, 0, 125);
-    lv_3d_chart_add_cursor(chart, 150, 0, 150);
-    lv_3d_chart_add_cursor(chart, 150, 0, 175);
-    lv_3d_chart_add_cursor(chart, 150, 0, 200);
+    // Phase chart
+    phase_chart = lv_3d_chart_create(screen, NULL);
 
-    // Second chart
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 0);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 25);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 50);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 75);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 100);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 125);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 150);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 175);
+    lv_3d_chart_add_cursor(phase_chart, 150, 0, 200);
+
+    lv_obj_set_hidden(phase_chart, true);
 
     while (1)
     {
@@ -210,9 +214,13 @@ static void plot_handler(lv_obj_t *obj, lv_event_t event)
         {
         case 0:
             snprintf(buf, 20, "amplitude");
+            lv_obj_set_hidden(amp_chart, false);
+            lv_obj_set_hidden(phase_chart, true);
             break;
         case 1:
             snprintf(buf, 20, "phase");
+            lv_obj_set_hidden(amp_chart, true);
+            lv_obj_set_hidden(phase_chart, false);
             break;
         default:
             break;
@@ -237,7 +245,7 @@ static void interval_handler(lv_obj_t *obj, lv_event_t event)
     if (event == LV_EVENT_VALUE_CHANGED)
     {
         static char buf[8];
-        snprintf(buf, 8, "%u kHz", lv_slider_get_value(obj));
+        snprintf(buf, 8, "%u Hz", lv_slider_get_value(obj));
         lv_label_set_text(interval_label, buf);
     }
 }
@@ -247,6 +255,18 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
     data->state = LV_INDEV_STATE_PR;
 
     if (gpio_get_level(LEFT_BUTTON_PIN) == 0 && gpio_get_level(RIGHT_BUTTON_PIN) == 0)
+    {
+        switch_tab = true;
+    }
+    else if (gpio_get_level(LEFT_BUTTON_PIN) == 0 && !switch_tab)
+    {
+        data->key = LV_KEY_LEFT;
+    }
+    else if (gpio_get_level(RIGHT_BUTTON_PIN) == 0 && !switch_tab)
+    {
+        data->key = LV_KEY_RIGHT;
+    }
+    else
     {
         if (switch_tab)
         {
@@ -264,20 +284,6 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
         }
 
         switch_tab = false;
-    }
-    else if (gpio_get_level(LEFT_BUTTON_PIN) == 0)
-    {
-        data->key = LV_KEY_LEFT;
-        switch_tab = false;
-    }
-    else if (gpio_get_level(RIGHT_BUTTON_PIN) == 0)
-    {
-        data->key = LV_KEY_RIGHT;
-        switch_tab = false;
-    }
-    else
-    {
-        switch_tab = true;
         data->state = LV_INDEV_STATE_REL;
     }
     return false; /*No buffering now so no more data read*/
@@ -311,7 +317,7 @@ static void show_menu(lv_obj_t *screen)
 
     // Configure Plot
     lv_obj_t *plot_slider = lv_slider_create(tab1, NULL);
-    lv_obj_set_width(plot_slider, width-10);
+    lv_obj_set_width(plot_slider, width - 10);
     lv_obj_align(plot_slider, NULL, LV_ALIGN_IN_LEFT_MID, 5, 0);
 
     lv_slider_set_range(plot_slider, 0, 1);
@@ -326,7 +332,7 @@ static void show_menu(lv_obj_t *screen)
 
     lv_obj_t *plot_info = lv_label_create(tab1, NULL);
     lv_label_set_long_mode(plot_info, LV_LABEL_LONG_SROLL_CIRC);
-    lv_obj_set_width(plot_info, width-10);
+    lv_obj_set_width(plot_info, width - 10);
     lv_obj_align(plot_info, NULL, LV_ALIGN_IN_TOP_LEFT, 5, 10);
 
     lv_label_set_text(plot_info, "Choose plot");
@@ -353,7 +359,7 @@ static void show_menu(lv_obj_t *screen)
 
     interval_label = lv_label_create(tab3, plot_label);
     lv_obj_align(interval_label, interval_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-    lv_label_set_text(interval_label, "0 kHz");
+    lv_label_set_text(interval_label, "0 Hz");
 
     lv_obj_t *interval_info = lv_label_create(tab3, plot_info);
     lv_label_set_text(interval_info, "Configure update interval");
