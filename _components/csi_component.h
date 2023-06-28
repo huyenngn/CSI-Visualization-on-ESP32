@@ -102,7 +102,7 @@ int8_t *my_ptr;
     
     */
     //printf(ss.str().c_str());
-    fflush(stdout);
+    //fflush(stdout);
     vTaskDelay(0);
     xSemaphoreGive(mutex);
 }
