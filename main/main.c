@@ -165,6 +165,7 @@ static void guiTask(void *pvParameter)
     lv_coord_t z_array[9] = {170, 150, 130, 140, 170, 150, 130, 140, 150};
 
     lv_3d_chart_series_t *x1 = lv_3d_chart_add_series(phase_chart);
+<<<<<<< HEAD
     lv_3d_chart_set_points(phase_chart, x1,(lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
 
     lv_3d_chart_series_t *x2 = lv_3d_chart_add_series(phase_chart);
@@ -193,6 +194,36 @@ static void guiTask(void *pvParameter)
 
     lv_3d_chart_series_t *x10 = lv_3d_chart_add_series(phase_chart);
     lv_3d_chart_set_points(phase_chart, x10, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+=======
+    lv_3d_chart_set_points(phase_chart, x1, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x2 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x2, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x3 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x3, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x4 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x4, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x5 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x5, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x6 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x6, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x7 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x7, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x8 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x8, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x9 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x9, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x10 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x10, &y_array, &z_array, 9);
+>>>>>>> f21f15e (testing and clean up)
 
     lv_obj_set_hidden(phase_chart, true);
 
