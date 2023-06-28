@@ -25,7 +25,6 @@
  *  STATIC PROTOTYPES
  **********************/
 static void lv_tick_task(void *arg);
-static void guiTask(void *pvParameter);
 static void show_menu(lv_obj_t *screen);
 static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
 
@@ -39,23 +38,12 @@ static lv_obj_t *tabview;
 static lv_group_t *g;
 static lv_obj_t *plot_label, *subc_label, *interval_label;
 
-/**********************
- *   APPLICATION MAIN
- **********************/
-void app_main()
-{
-    /* If you want to use a task to create the graphic, you NEED to create a Pinned task
-     * Otherwise there can be problem such as memory corruption and so on.
-     * NOTE: When not using Wi-Fi nor Bluetooth you can pin the guiTask to core 0 */
-    xTaskCreatePinnedToCore(guiTask, "gui", 4096 * 2, NULL, 0, NULL, 1);
-}
-
 /* Creates a semaphore to handle concurrent call to lvgl stuff
  * If you wish to call *any* lvgl function from other threads/tasks
  * you should lock on the very same semaphore! */
 SemaphoreHandle_t xGuiSemaphore;
 
-static void guiTask(void *pvParameter)
+extern "C" void guiTask(void *pvParameter)
 {
     (void)pvParameter;
     xGuiSemaphore = xSemaphoreCreateMutex();
@@ -65,12 +53,12 @@ static void guiTask(void *pvParameter)
     /* Initialize SPI or I2C bus used by the drivers */
     lvgl_driver_init();
 
-    lv_color_t *buf1 = heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    lv_color_t *buf1 = (lv_color_t *) heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
     assert(buf1 != NULL);
 
     /* Use double buffered when not working with monochrome displays */
 #ifndef CONFIG_LV_TFT_DISPLAY_MONOCHROME
-    lv_color_t *buf2 = heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    lv_color_t *buf2 = (lv_color_t *) heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
     assert(buf2 != NULL);
 #else
     static lv_color_t *buf2 = NULL;
@@ -165,34 +153,34 @@ static void guiTask(void *pvParameter)
     lv_coord_t z_array[9] = {170, 150, 130, 140, 170, 150, 130, 140, 150};
 
     lv_3d_chart_series_t *x1 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x1,(lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x1, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x2 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x2, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x2, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x3 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x3, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x3, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x4 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x4, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x4, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x5 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x5, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x5, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x6 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x6, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x6, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x7 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x7, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x7, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x8 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x8, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x8, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x9 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x9, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x9, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_3d_chart_series_t *x10 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x10, (lv_coord_t *) &y_array, (lv_coord_t *) &z_array, 9);
+    lv_3d_chart_set_points(phase_chart, x10, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
 
     lv_obj_set_hidden(phase_chart, true);
 
@@ -364,4 +352,15 @@ static void show_menu(lv_obj_t *screen)
 
     lv_obj_t *interval_info = lv_label_create(tab3, plot_info);
     lv_label_set_text(interval_info, "Configure update interval");
+}
+
+/**********************
+ *   APPLICATION MAIN
+ **********************/
+extern "C" void app_main()
+{
+    /* If you want to use a task to create the graphic, you NEED to create a Pinned task
+     * Otherwise there can be problem such as memory corruption and so on.
+     * NOTE: When not using Wi-Fi nor Bluetooth you can pin the guiTask to core 0 */
+    xTaskCreatePinnedToCore(guiTask, "gui", 4096 * 2, NULL, 0, NULL, 1);
 }
