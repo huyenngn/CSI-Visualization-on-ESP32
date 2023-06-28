@@ -1,13 +1,3 @@
-/* LVGL Example project
- *
- * Basic project to test LVGL on ESP32 based projects.
- *
- * This example code is in the Public Domain (or CC0 licensed, at your option.)
- *
- * Unless required by applicable law or agreed to in writing, this
- * software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied.
- */
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +44,6 @@ static lv_obj_t *plot_label, *subc_label, *interval_label;
  **********************/
 void app_main()
 {
-
     /* If you want to use a task to create the graphic, you NEED to create a Pinned task
      * Otherwise there can be problem such as memory corruption and so on.
      * NOTE: When not using Wi-Fi nor Bluetooth you can pin the guiTask to core 0 */
@@ -68,7 +57,6 @@ SemaphoreHandle_t xGuiSemaphore;
 
 static void guiTask(void *pvParameter)
 {
-
     (void)pvParameter;
     xGuiSemaphore = xSemaphoreCreateMutex();
 
@@ -160,30 +148,60 @@ static void guiTask(void *pvParameter)
     lv_3d_chart_add_cursor(amp_chart, 0, 100, 100);
     lv_3d_chart_add_cursor(amp_chart, 100, 100, 100);
     lv_3d_chart_add_cursor(amp_chart, 100, 0, 100);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 0);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 25);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 50);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 75);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 100);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 125);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 150);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 175);
+    lv_3d_chart_add_cursor(amp_chart, 150, 0, 200);
 
     // Phase chart
     phase_chart = lv_3d_chart_create(screen, NULL);
 
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 0);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 25);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 50);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 75);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 100);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 125);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 150);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 175);
-    lv_3d_chart_add_cursor(phase_chart, 150, 0, 200);
+    lv_coord_t y_array[9] = {0, 25, 50, 75, 100, 125, 150, 175, 200};
+    lv_coord_t z_array[9] = {170, 150, 130, 140, 170, 150, 130, 140, 150};
+
+    lv_3d_chart_series_t *x1 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x1, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x2 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x2, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x3 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x3, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x4 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x4, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x5 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x5, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x6 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x6, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x7 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x7, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x8 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x8, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x9 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x9, &y_array, &z_array, 9);
+
+    lv_3d_chart_series_t *x10 = lv_3d_chart_add_series(phase_chart);
+    lv_3d_chart_set_points(phase_chart, x10, &y_array, &z_array, 9);
 
     lv_obj_set_hidden(phase_chart, true);
 
-    while (1)
-    {
+    while (1) {
         /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
         vTaskDelay(pdMS_TO_TICKS(10));
 
         /* Try to take the semaphore, call lvgl related function on success */
-        if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY))
-        {
+        if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_task_handler();
             xSemaphoreGive(xGuiSemaphore);
         }
@@ -206,24 +224,22 @@ static void lv_tick_task(void *arg)
 
 static void plot_handler(lv_obj_t *obj, lv_event_t event)
 {
-    if (event == LV_EVENT_VALUE_CHANGED)
-    {
+    if (event == LV_EVENT_VALUE_CHANGED) {
         static char buf[20];
         int16_t val = lv_slider_get_value(obj);
-        switch (val)
-        {
-        case 0:
-            snprintf(buf, 20, "amplitude");
-            lv_obj_set_hidden(amp_chart, false);
-            lv_obj_set_hidden(phase_chart, true);
-            break;
-        case 1:
-            snprintf(buf, 20, "phase");
-            lv_obj_set_hidden(amp_chart, true);
-            lv_obj_set_hidden(phase_chart, false);
-            break;
-        default:
-            break;
+        switch (val) {
+            case 0:
+                snprintf(buf, 20, "amplitude");
+                lv_obj_set_hidden(amp_chart, false);
+                lv_obj_set_hidden(phase_chart, true);
+                break;
+            case 1:
+                snprintf(buf, 20, "phase");
+                lv_obj_set_hidden(amp_chart, true);
+                lv_obj_set_hidden(phase_chart, false);
+                break;
+            default:
+                break;
         }
 
         lv_label_set_text(plot_label, buf);
@@ -232,8 +248,7 @@ static void plot_handler(lv_obj_t *obj, lv_event_t event)
 
 static void subc_handler(lv_obj_t *obj, lv_event_t event)
 {
-    if (event == LV_EVENT_VALUE_CHANGED)
-    {
+    if (event == LV_EVENT_VALUE_CHANGED) {
         static char buf[11];
         snprintf(buf, 11, "%d kHz", lv_slider_get_value(obj));
         lv_label_set_text(subc_label, buf);
@@ -242,8 +257,7 @@ static void subc_handler(lv_obj_t *obj, lv_event_t event)
 
 static void interval_handler(lv_obj_t *obj, lv_event_t event)
 {
-    if (event == LV_EVENT_VALUE_CHANGED)
-    {
+    if (event == LV_EVENT_VALUE_CHANGED) {
         static char buf[8];
         snprintf(buf, 8, "%u Hz", lv_slider_get_value(obj));
         lv_label_set_text(interval_label, buf);
@@ -254,38 +268,25 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
 {
     data->state = LV_INDEV_STATE_PR;
 
-    if (gpio_get_level(LEFT_BUTTON_PIN) == 0 && gpio_get_level(RIGHT_BUTTON_PIN) == 0)
-    {
+    if (gpio_get_level(LEFT_BUTTON_PIN) && gpio_get_level(RIGHT_BUTTON_PIN)) {
         switch_tab = true;
-    }
-    else if (gpio_get_level(LEFT_BUTTON_PIN) == 0 && !switch_tab)
-    {
-        data->key = LV_KEY_LEFT;
-    }
-    else if (gpio_get_level(RIGHT_BUTTON_PIN) == 0 && !switch_tab)
-    {
-        data->key = LV_KEY_RIGHT;
-    }
-    else
-    {
-        if (switch_tab)
-        {
-
-            if (current_tab == 2)
-            {
-                current_tab = 0;
-            }
-            else
-            {
-                current_tab++;
-            }
-            lv_tabview_set_tab_act(tabview, current_tab, LV_ANIM_ON);
-            lv_group_focus_next(g);
-        }
-
-        switch_tab = false;
         data->state = LV_INDEV_STATE_REL;
     }
+    else if (!gpio_get_level(LEFT_BUTTON_PIN) && !gpio_get_level(RIGHT_BUTTON_PIN)) {
+        if (switch_tab) {
+            current_tab = (current_tab == 2) ? 0 : current_tab + 1;
+            lv_tabview_set_tab_act(tabview, current_tab, LV_ANIM_ON);
+            lv_group_focus_next(g);
+            switch_tab = false;
+        }
+    }
+    else if (!gpio_get_level(LEFT_BUTTON_PIN)) {
+        data->key = LV_KEY_LEFT;
+    }
+    else if (!gpio_get_level(RIGHT_BUTTON_PIN)) {
+        data->key = LV_KEY_RIGHT;
+    }
+
     return false; /*No buffering now so no more data read*/
 }
 
