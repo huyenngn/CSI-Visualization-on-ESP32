@@ -9,7 +9,7 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-
+//hi
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
@@ -63,13 +63,16 @@
 
 void vTask_visualize_data(void* pvParameters) {                     // Funktion zum Annehmen und Plotten der Daten
     
-    vTaskDelay(1000/portTICK_PERIOD_MS);
-
-    wifi_csi_info_t *data; 
+    //vTaskDelay(1000/portTICK_PERIOD_MS);
     
     printf("\n______ GUI running ______\n");
     while(1){
-        if (xQueueReceive(data_queue, &data, 100) == pdTRUE) {       // Daten aus queue holen, checke alle 0 ms falls voll
+        
+        wifi_csi_info_t *data;
+        
+        if (xQueueReceive(data_queue, &data, 100) == pdTRUE) {       // Daten aus queue holen, checke alle 0 ms falls voll 
+
+            printf("\n______ PLOT ______\n");
             
             int csi_len = data->len;    // Länge der CSI-Daten
             int8_t *csi = data->buf;    // Pointer zeigt auf Buffer mit CSI Daten
@@ -83,7 +86,6 @@ void vTask_visualize_data(void* pvParameters) {                     // Funktion 
             printf("CSI_RAW = %s \n", csi_raw.str().c_str());
 
             /*
-
             // Extrahieren, Berechnen und Ausgabe der der CSI-Amplituden
             std::stringstream csi_amp;
             for (int i = 0; i < csi_len / 2; i++) {
@@ -91,7 +93,6 @@ void vTask_visualize_data(void* pvParameters) {                     // Funktion 
             }
             csi_amp << "]\n";
             printf("CSI_AMP = %s \n", csi_amp.str().c_str());
-        
 
             // Extrahieren, Berechnen und Ausgabe der CSI-Phasen
             std::stringstream csi_phase;
@@ -100,11 +101,12 @@ void vTask_visualize_data(void* pvParameters) {                     // Funktion 
             }
             csi_phase << "]\n";
             printf("CSI_AMP = %s \n", csi_amp.str().c_str());
-            
             */
+            fflush(stdout);
+            vTaskDelay(0);
         }else{
-            // int space = uxQueueSpacesAvailable(data_queue);
-            // printf("Freier Platz in Queue: %d \n", space);
+            int space = uxQueueSpacesAvailable(data_queue);
+            printf("Freier Platz in Queue: %d \n", space);
         
         }   
     }
@@ -253,7 +255,7 @@ extern "C" void app_main() {
 
     // für task visualize_data sind erstmal 1 kByte reserviert und Priorität liegt bei zwei
     
-    xTaskCreatePinnedToCore(&vTask_visualize_data, "visualize_data", 4096*2, NULL, 50, NULL, 1);
+    xTaskCreatePinnedToCore(&vTask_visualize_data, "visualize_data", 8192, NULL, 50, NULL, 1);
 
     ///////////////////////////////////////////////////
 }
