@@ -102,7 +102,11 @@ int8_t *my_ptr;
     
     */
     //printf(ss.str().c_str());
+<<<<<<< HEAD
     //fflush(stdout);
+=======
+    fflush(stdout);
+>>>>>>> 9bbd6de (daniels code)
     vTaskDelay(0);
     xSemaphoreGive(mutex);
 }
