@@ -1,10 +1,10 @@
 #ifndef ESP32_CSI_CSI_COMPONENT_H
 #define ESP32_CSI_CSI_COMPONENT_H
 
-#include "time_component.h"
+// #include "time_component.h"
 #include "math.h"
-#include <sstream>
-#include <iostream>
+// #include <sstream>
+// #include <iostream>
 
 char *project_type;
 
