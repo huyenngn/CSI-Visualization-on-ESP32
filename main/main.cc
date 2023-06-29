@@ -97,6 +97,7 @@ static lv_obj_t *plot_label, *subc_label, *interval_label;
  * If you wish to call *any* lvgl function from other threads/tasks
  * you should lock on the very same semaphore! */
 SemaphoreHandle_t xGuiSemaphore;
+lv_task_t *plotTask;
 
 extern "C" void guiTask(void *pvParameter)
 {
@@ -200,34 +201,34 @@ extern "C" void guiTask(void *pvParameter)
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_task_handler();
             xSemaphoreGive(xGuiSemaphore);
-        }
 
-        if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
+            if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
 
-            uint16_t csi_len = d->len;
-            int8_t *csi_data = d->buf;
+                uint16_t csi_len = d->len;
+                int8_t *csi_data = d->buf;
 
-            // Übergabe arrays befüllen
-            lv_coord_t subc[csi_len];
-            lv_coord_t amp[csi_len];
-            lv_coord_t phase[csi_len];
-            for (int i = 0; i < csi_len; i++) {
+                // Übergabe arrays befüllen
+                lv_coord_t subc[csi_len];
+                lv_coord_t amp[csi_len];
+                lv_coord_t phase[csi_len];
+                for (int i = 0; i < csi_len; i++) {
+                }
+                int16_t i = 0;
+                while (i < csi_len / 2) {
+                    subc[i] = i;
+                    amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                    // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
+                    i = i + 10;
+                }
+
+                // Plotfunktion übergeben
+                // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
+
+                lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
+
+                // free(d->buf;);
+                free(d);
             }
-            int16_t i = 0;
-            while (i < csi_len / 2) {
-                subc[i] = i;
-                amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
-                // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
-                i = i + 10;
-            }
-
-            // Plotfunktion übergeben
-            // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
-
-            lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
-
-            // free(d->buf;);
-            free(d);
         }
     }
     /* A task should NEVER return */
