@@ -20,90 +20,33 @@ SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
 
 ///////////////////////    BEGINN MEIN CODE    ///////////////////////////
 
-static const int data_queue_len = 5;                                                       // Länge der Queue
+static const int data_queue_len = 1;                                                       // Länge der Queue
 
 const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t*));         // Queue erstellen
 
 void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) {        // wird jedes Mal beim Erhalt eines CSI Paketes aufgerufen
     xSemaphoreTake(mutex, portMAX_DELAY);
-
-    wifi_csi_info_t d = data[0];
-
-    if (data_queue == NULL) {
-        printf("queue could not be created.. \n");
-    }   
-
-    if (xQueueSendFromISR(data_queue, &d, NULL) == pdTRUE){           // Daten in die Queue legen, 10 ticks warten wenn Queue voll
-        printf("CSI data was placed into queue.. \n");
-    }else{
-        xQueueOverwriteFromISR(data_queue, &d, NULL);
-        printf("data in queue overwritten..\n");
-        int messagecount = uxQueueMessagesWaiting(data_queue);      // Daten überschreiben, wenn queue voll ist
-        printf("elements waiting in Queue: %d \n", messagecount);
-    }
     
-    /*
-    char mac[20] = {0};
-    sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", d.mac[0], d.mac[1], d.mac[2], d.mac[3], d.mac[4], d.mac[5]);
+    if (uxQueueSpacesAvailable(data_queue)>0){  // wennn platz platz in Queue        
 
-    ss << "CSI_DATA,"
-       << project_type << ","
-       << mac << ","
-       // https://github.com/espressif/esp-idf/blob/9d0ca60398481a44861542638cfdc1949bb6f312/components/esp_wifi/include/esp_wifi_types.h#L314
-       << d.rx_ctrl.rssi << ","
-       << d.rx_ctrl.rate << ","
-       << d.rx_ctrl.sig_mode << ","
-       << d.rx_ctrl.mcs << ","
-       << d.rx_ctrl.cwb << ","
-       << d.rx_ctrl.smoothing << ","
-       << d.rx_ctrl.not_sounding << ","
-       << d.rx_ctrl.aggregation << ","
-       << d.rx_ctrl.stbc << ","
-       << d.rx_ctrl.fec_coding << ","
-       << d.rx_ctrl.sgi << ","
-       << d.rx_ctrl.noise_floor << ","
-       << d.rx_ctrl.ampdu_cnt << ","
-       << d.rx_ctrl.channel << ","
-       << d.rx_ctrl.secondary_channel << ","
-       << d.rx_ctrl.timestamp << ","
-       << d.rx_ctrl.ant << ","
-       << d.rx_ctrl.sig_len << ","
-       << d.rx_ctrl.rx_state << ","
-       << real_time_set << ","
-       << get_steady_clock_timestamp() << ","
-       << data->len << ",[";
+        wifi_csi_info_t *csi = (wifi_csi_info_t*) malloc(sizeof(wifi_csi_info_t));
 
-#if CONFIG_SHOULD_COLLECT_ONLY_LLTF
-    int data_len = 128;
-#else
-    int data_len = data->len;
-#endif
+        if (csi != NULL || csi->buf != NULL){       // speicher konnte alloziiert werden
 
-int8_t *my_ptr;
-#if CSI_RAW
-    my_ptr = data->buf;
-    for (int i = 0; i < data_len; i++) {
-        ss << (int) my_ptr[i] << " ";
-    }
-#endif
-#if CSI_AMPLITUDE
-    my_ptr = data->buf;
-    for (int i = 0; i < data_len / 2; i++) {
-        ss << (int) sqrt(pow(my_ptr[i * 2], 2) + pow(my_ptr[(i * 2) + 1], 2)) << " ";
-    }
-#endif
-#if CSI_PHASE
-    my_ptr = data->buf;
-    for (int i = 0; i < data_len / 2; i++) {
-        ss << (int) atan2(my_ptr[i*2], my_ptr[(i*2)+1]) << " ";
-    }
-#endif
-    ss << "]\n";
-    
-    */
-    //printf(ss.str().c_str());
-    //fflush(stdout);
-    vTaskDelay(0);
+            // kopieren der daten in den zu beginn alloziierten speicher
+            csi->buf = data->buf;
+            memcpy(csi, data, sizeof(wifi_csi_info_t));
+            
+            // Pointer auf daten in Queuelegen
+            if (xQueueSend(data_queue, &csi, portMAX_DELAY)==pdPASS){
+                printf("CSI data was placed into queue.. \n");
+            }else{
+                free(csi);
+            }
+            
+        }else{
+            free(csi);
+        }
     xSemaphoreGive(mutex);
 }
 

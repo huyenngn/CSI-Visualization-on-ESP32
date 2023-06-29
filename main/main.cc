@@ -240,49 +240,25 @@ extern "C" void guiTask(void *pvParameter)
     lv_obj_set_hidden(phase_chart, true);
 
     while (1) {
-        /* Delay 1 tick (assumes FreeRTOS tick is 10ms */
-        vTaskDelay(pdMS_TO_TICKS(10));
+        
+        if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {       // Daten aus queue holen, checke alle 0 ms falls voll
+            
+            uint16_t csi_len = d->len;
+            int8_t* csi_data = d->buf;
 
-        wifi_csi_info_t *data;
+            // HIER PLOTTEN 
 
-        if (xQueueReceive(data_queue, &data, 100) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
-
-            printf("\n______ PLOT ______\n");
-
-            int csi_len = data->len;  // Länge der CSI-Daten
-            int8_t *csi = data->buf;  // Pointer zeigt auf Buffer mit CSI Daten
-
-            // Extrahieren & Ausgabe der rohen CSI (Real- und Imaginärteil immer abwechselnd zwei Bytes)
-            std::stringstream csi_raw;
-            for (int i = 0; i < csi_len; i++) {
-                csi_raw << (int)csi[i] << " ";
-            }
-            csi_raw << "]\n";
-            printf("CSI_RAW = %s \n", csi_raw.str().c_str());
-
-            /*
             // Extrahieren, Berechnen und Ausgabe der der CSI-Amplituden
             std::stringstream csi_amp;
             for (int i = 0; i < csi_len / 2; i++) {
-                csi_amp << (int) sqrt(pow(csi[i * 2], 2) + pow(csi[(i * 2) + 1], 2)) << " ";
+                csi_amp << (int) sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2)) << " ";
             }
             csi_amp << "]\n";
             printf("CSI_AMP = %s \n", csi_amp.str().c_str());
-
-            // Extrahieren, Berechnen und Ausgabe der CSI-Phasen
-            std::stringstream csi_phase;
-            for (int i = 0; i < csi_len / 2; i++) {
-                csi_phase << (int) atan2(csi[i*2], csi[(i*2)+1]) << " ";
-            }
-            csi_phase << "]\n";
-            printf("CSI_AMP = %s \n", csi_amp.str().c_str());
-            */
             fflush(stdout);
-            vTaskDelay(0);
-        }
-        else {
-            int space = uxQueueSpacesAvailable(data_queue);
-            printf("Freier Platz in Queue: %d \n", space);
+
+            //free(d->buf;);
+            free(d);
         }
 
         /* Try to take the semaphore, call lvgl related function on success */
