@@ -250,19 +250,20 @@ extern "C" void guiTask(void *pvParameter)
             int8_t* csi_data = d->buf;
             
             // Übergabe arrays befüllen
-            lv_coord_t subc[csi_len]
+            lv_coord_t subc[csi_len];
             lv_coord_t csi[csi_len];
-            for (int i = 0, i<csi_len, i++) {
+            for (int i = 0; i<csi_len; i++) {
                 subc[i] = i;
                 csi[i] = csi_data[i];
             }
+
 
             // Plotfunktion übergeben
 
             
 
             // Extrahieren, Berechnen und Ausgabe der der CSI-Amplituden
-            
+            std::stringstream csi_amp;
             for (int i = 0; i < csi_len / 2; i++) {
                 csi_amp << (int) sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2)) << " ";
             }
