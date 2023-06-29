@@ -97,7 +97,6 @@ static lv_obj_t *plot_label, *subc_label, *interval_label;
  * If you wish to call *any* lvgl function from other threads/tasks
  * you should lock on the very same semaphore! */
 SemaphoreHandle_t xGuiSemaphore;
-lv_task_t *plotTask;
 
 extern "C" void guiTask(void *pvParameter)
 {
