@@ -218,7 +218,7 @@ extern "C" void guiTask(void *pvParameter)
                 subc[i] = i;
                 amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
                 // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
-                i = i + 5;
+                i = i + 10;
             }
 
             // Plotfunktion übergeben
