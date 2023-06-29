@@ -184,59 +184,12 @@ extern "C" void guiTask(void *pvParameter)
     amp_chart = lv_3d_chart_create(screen, NULL);
 
     lv_3d_chart_add_cursor(amp_chart, 0, 0, 0);
-    lv_3d_chart_add_cursor(amp_chart, 0, 100, 0);
-    lv_3d_chart_add_cursor(amp_chart, 100, 100, 0);
-    lv_3d_chart_add_cursor(amp_chart, 100, 0, 0);
 
-    lv_3d_chart_add_cursor(amp_chart, 0, 0, 100);
-    lv_3d_chart_add_cursor(amp_chart, 0, 100, 100);
-    lv_3d_chart_add_cursor(amp_chart, 100, 100, 100);
-    lv_3d_chart_add_cursor(amp_chart, 100, 0, 100);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 0);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 25);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 50);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 75);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 100);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 125);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 150);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 175);
-    lv_3d_chart_add_cursor(amp_chart, 150, 0, 200);
 
     // Phase chart
     phase_chart = lv_3d_chart_create(screen, NULL);
 
-    lv_coord_t y_array[9] = {0, 25, 50, 75, 100, 125, 150, 175, 200};
-    lv_coord_t z_array[9] = {170, 150, 130, 140, 170, 150, 130, 140, 150};
-
-    lv_3d_chart_series_t *x1 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x1, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x2 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x2, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x3 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x3, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x4 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x4, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x5 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x5, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x6 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x6, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x7 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x7, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x8 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x8, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x9 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x9, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
-
-    lv_3d_chart_series_t *x10 = lv_3d_chart_add_series(phase_chart);
-    lv_3d_chart_set_points(phase_chart, x10, (lv_coord_t *)&y_array, (lv_coord_t *)&z_array, 9);
+    lv_3d_chart_add_cursor(phase_chart, 0, 0, 0);
 
     lv_obj_set_hidden(phase_chart, true);
 
@@ -251,16 +204,20 @@ extern "C" void guiTask(void *pvParameter)
             
             // Übergabe arrays befüllen
             lv_coord_t subc[csi_len];
-            lv_coord_t csi[csi_len];
+            lv_coord_t amp[csi_len];
+            lv_coord_t phase[csi_len];
             for (int i = 0; i<csi_len; i++) {
                 subc[i] = i;
-                csi[i] = csi_data[i];
+            }
+            for (int i = 0; i<csi_len/2; i++) {
+                amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
             }
 
-
             // Plotfunktion übergeben
+            lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
 
-            
+            lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
 
             // Extrahieren, Berechnen und Ausgabe der der CSI-Amplituden
             std::stringstream csi_amp;
@@ -593,7 +550,7 @@ extern "C" void app_main()
 
     // für task visualize_data sind erstmal 1 kByte reserviert und Priorität liegt bei zwei
 
-    xTaskCreatePinnedToCore(guiTask, "gui", 10000, NULL, 0, NULL, 1);
+    xTaskCreatePinnedToCore(guiTask, "gui", 10000, NULL, 100, NULL, 1);
 
     ///////////////////////////////////////////////////
 }
