@@ -22,11 +22,11 @@ SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
 
 static const int data_queue_len = 1;                                                       // Länge der Queue
 
-const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t*));         // Queue erstellen
+const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t));         // Queue erstellen
 
 void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) {        // wird jedes Mal beim Erhalt eines CSI Paketes aufgerufen
     xSemaphoreTake(mutex, portMAX_DELAY);
-    
+
     if (uxQueueSpacesAvailable(data_queue)>0){  // wennn platz platz in Queue        
 
         wifi_csi_info_t *csi = (wifi_csi_info_t*) malloc(sizeof(wifi_csi_info_t));
@@ -43,10 +43,11 @@ void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) {        // wird jedes Mal b
             }else{
                 free(csi);
             }
-            
+
         }else{
             free(csi);
         }
+    }
     xSemaphoreGive(mutex);
 }
 

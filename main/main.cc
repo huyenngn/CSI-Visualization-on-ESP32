@@ -42,8 +42,9 @@
  * If you'd rather not, just change the below entries to strings with
  * the config you want - ie #define ESP_WIFI_SSID "mywifissid"
  */
-#define ESP_WIFI_SSID CONFIG_ESP_WIFI_SSID
-#define ESP_WIFI_PASS CONFIG_ESP_WIFI_PASSWORD
+#define ESP_WIFI_SSID "csicsicsi" //CONFIG_ESP_WIFI_SSID
+#define ESP_WIFI_PASS "csicsicsi" //CONFIG_ESP_WIFI_PASSWORD
+
 
 #ifdef CONFIG_WIFI_CHANNEL
 #define WIFI_CHANNEL CONFIG_WIFI_CHANNEL
@@ -239,17 +240,29 @@ extern "C" void guiTask(void *pvParameter)
 
     lv_obj_set_hidden(phase_chart, true);
 
+    wifi_csi_info_t* d;
+
     while (1) {
-        
+
         if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {       // Daten aus queue holen, checke alle 0 ms falls voll
             
             uint16_t csi_len = d->len;
             int8_t* csi_data = d->buf;
+            
+            // Übergabe arrays befüllen
+            lv_coord_t subc[csi_len]
+            lv_coord_t csi[csi_len];
+            for (int i = 0, i<csi_len, i++) {
+                subc[i] = i;
+                csi[i] = csi_data[i];
+            }
 
-            // HIER PLOTTEN 
+            // Plotfunktion übergeben
+
+            
 
             // Extrahieren, Berechnen und Ausgabe der der CSI-Amplituden
-            std::stringstream csi_amp;
+            
             for (int i = 0; i < csi_len / 2; i++) {
                 csi_amp << (int) sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2)) << " ";
             }
@@ -572,14 +585,14 @@ extern "C" void app_main()
     printf("CSI will not be collected. Check `idf.py menuconfig  # > ESP32 CSI Tool Config` to enable CSI");
 #endif
 
-    // xTaskCreatePinnedToCore(&vTask_socket_transmitter_sta_loop, "socket_transmitter_sta_loop",
-    //                         10000, (void *)&is_wifi_connected, 100, &xHandle, 0);
+    xTaskCreatePinnedToCore(&vTask_socket_transmitter_sta_loop, "socket_transmitter_sta_loop",
+                            10000, (void *)&is_wifi_connected, 100, &xHandle, 0);
 
     /////////////// HIER TASK ERSTELLEN ///////////////
 
     // für task visualize_data sind erstmal 1 kByte reserviert und Priorität liegt bei zwei
 
-    xTaskCreatePinnedToCore(guiTask, "gui", 4096 * 2, NULL, 0, NULL, 1);
+    xTaskCreatePinnedToCore(guiTask, "gui", 10000, NULL, 0, NULL, 1);
 
     ///////////////////////////////////////////////////
 }
