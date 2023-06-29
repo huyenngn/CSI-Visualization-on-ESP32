@@ -42,9 +42,8 @@
  * If you'd rather not, just change the below entries to strings with
  * the config you want - ie #define ESP_WIFI_SSID "mywifissid"
  */
-#define ESP_WIFI_SSID "csicsicsi" //CONFIG_ESP_WIFI_SSID
-#define ESP_WIFI_PASS "csicsicsi" //CONFIG_ESP_WIFI_PASSWORD
-
+#define ESP_WIFI_SSID "csicsicsi"  // CONFIG_ESP_WIFI_SSID
+#define ESP_WIFI_PASS "csicsicsi"  // CONFIG_ESP_WIFI_PASSWORD
 
 #ifdef CONFIG_WIFI_CHANNEL
 #define WIFI_CHANNEL CONFIG_WIFI_CHANNEL
@@ -109,12 +108,12 @@ extern "C" void guiTask(void *pvParameter)
     /* Initialize SPI or I2C bus used by the drivers */
     lvgl_driver_init();
 
-    lv_color_t *buf1 = (lv_color_t *) heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    lv_color_t *buf1 = (lv_color_t *)heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
     assert(buf1 != NULL);
 
     /* Use double buffered when not working with monochrome displays */
 #ifndef CONFIG_LV_TFT_DISPLAY_MONOCHROME
-    lv_color_t *buf2 = (lv_color_t *) heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    lv_color_t *buf2 = (lv_color_t *)heap_caps_malloc(DISP_BUF_SIZE * sizeof(lv_color_t), MALLOC_CAP_DMA);
     assert(buf2 != NULL);
 #else
     static lv_color_t *buf2 = NULL;
@@ -183,59 +182,52 @@ extern "C" void guiTask(void *pvParameter)
     // Amp chart
     amp_chart = lv_3d_chart_create(screen, NULL);
 
-    lv_3d_chart_add_cursor(amp_chart, 0, 0, 0);
-
+    // lv_3d_chart_add_cursor(amp_chart, 0, 0, 0);
 
     // Phase chart
     phase_chart = lv_3d_chart_create(screen, NULL);
 
-    lv_3d_chart_add_cursor(phase_chart, 0, 0, 0);
+    // lv_3d_chart_add_cursor(phase_chart, 0, 0, 0);
 
     lv_obj_set_hidden(phase_chart, true);
 
-    wifi_csi_info_t* d;
+    wifi_csi_info_t *d;
 
     while (1) {
-
-        if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {       // Daten aus queue holen, checke alle 0 ms falls voll
-            
-            uint16_t csi_len = d->len;
-            int8_t* csi_data = d->buf;
-            
-            // Übergabe arrays befüllen
-            lv_coord_t subc[csi_len];
-            lv_coord_t amp[csi_len];
-            lv_coord_t phase[csi_len];
-            for (int i = 0; i<csi_len; i++) {
-                subc[i] = i;
-            }
-            for (int i = 0; i<csi_len/2; i++) {
-                amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
-                phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
-            }
-
-            // Plotfunktion übergeben
-            lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
-
-            lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
-
-            // Extrahieren, Berechnen und Ausgabe der der CSI-Amplituden
-            std::stringstream csi_amp;
-            for (int i = 0; i < csi_len / 2; i++) {
-                csi_amp << (int) sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2)) << " ";
-            }
-            csi_amp << "]\n";
-            printf("CSI_AMP = %s \n", csi_amp.str().c_str());
-            fflush(stdout);
-
-            //free(d->buf;);
-            free(d);
-        }
+        vTaskDelay(10);
 
         /* Try to take the semaphore, call lvgl related function on success */
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
             lv_task_handler();
             xSemaphoreGive(xGuiSemaphore);
+        }
+
+        if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
+
+            uint16_t csi_len = d->len;
+            int8_t *csi_data = d->buf;
+
+            // Übergabe arrays befüllen
+            lv_coord_t subc[csi_len];
+            lv_coord_t amp[csi_len];
+            lv_coord_t phase[csi_len];
+            for (int i = 0; i < csi_len; i++) {
+            }
+            int16_t i = 0;
+            while (i < csi_len / 2) {
+                subc[i] = i;
+                amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
+                i = i + 5;
+            }
+
+            // Plotfunktion übergeben
+            // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
+
+            lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
+
+            // free(d->buf;);
+            free(d);
         }
     }
     /* A task should NEVER return */
@@ -245,7 +237,6 @@ extern "C" void guiTask(void *pvParameter)
 #endif
     vTaskDelete(NULL);
 }
-
 
 static void lv_tick_task(void *arg)
 {
