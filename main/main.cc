@@ -79,7 +79,6 @@
  *  STATIC PROTOTYPES
  **********************/
 static void lv_tick_task(void *arg);
-// static void guiTask(void *pvParameter);
 static void show_menu(lv_obj_t *screen);
 static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
 
@@ -194,7 +193,7 @@ extern "C" void guiTask(void *pvParameter)
     wifi_csi_info_t *d;
 
     while (1) {
-        vTaskDelay(10);
+        vTaskDelay(pdMS_TO_TICKS(10));
 
         /* Try to take the semaphore, call lvgl related function on success */
         if (pdTRUE == xSemaphoreTake(xGuiSemaphore, portMAX_DELAY)) {
