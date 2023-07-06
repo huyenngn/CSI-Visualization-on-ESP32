@@ -42,8 +42,8 @@
  * If you'd rather not, just change the below entries to strings with
  * the config you want - ie #define ESP_WIFI_SSID "mywifissid"
  */
-#define ESP_WIFI_SSID "csicsicsi"  // CONFIG_ESP_WIFI_SSID
-#define ESP_WIFI_PASS "csicsicsi"  // CONFIG_ESP_WIFI_PASSWORD
+#define ESP_WIFI_SSID "csicsicsi"    // CONFIG_ESP_WIFI_SSID
+#define ESP_WIFI_PASS "csipassword"  // CONFIG_ESP_WIFI_PASSWORD
 
 #ifdef CONFIG_WIFI_CHANNEL
 #define WIFI_CHANNEL CONFIG_WIFI_CHANNEL
@@ -206,18 +206,28 @@ extern "C" void guiTask(void *pvParameter)
                 int8_t *csi_data = d->buf;
 
                 // Übergabe arrays befüllen
-                lv_coord_t subc[csi_len];
-                lv_coord_t amp[csi_len];
-                lv_coord_t phase[csi_len];
-                for (int i = 0; i < csi_len; i++) {
-                }
+                lv_coord_t subc[csi_len / 2];
+                lv_coord_t amp[csi_len / 2];
+                lv_coord_t phase[csi_len / 2];
+
                 int16_t i = 0;
+                printf("******************************\n");
                 while (i < csi_len / 2) {
                     subc[i] = i;
-                    amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                    if ((i < 3) || (i > 60)) {
+                        amp[i] = 0;
+                    }
+                    else {
+                        amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                        if (amp[i] > 100) {
+                            // printf("\n*****%d, %d****\n", csi_data[i * 2], csi_data[i * 2+1]);
+                        }
+                    }
                     // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
-                    i = i + 10;
+                    printf("%d, ", amp[i]);
+                    i++;
                 }
+                printf("\n");
 
                 // Plotfunktion übergeben
                 // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
