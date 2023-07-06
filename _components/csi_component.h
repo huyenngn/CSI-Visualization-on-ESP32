@@ -20,10 +20,11 @@ SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
 
 ///////////////////////    BEGINN MEIN CODE    ///////////////////////////
 
-static const int data_queue_len = 1;                                                       // Länge der Queue
+static const int data_queue_len = 1;  // Länge der Queue
 
-const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t));         // Queue erstellen
+const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t));  // Queue erstellen
 
+<<<<<<< HEAD
 //wifi_csi_info_t csi;
 
 uint16_t csi[64];
@@ -38,11 +39,29 @@ void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) {        // wird jedes Mal b
     if (uxQueueSpacesAvailable(data_queue)>0){  // wennn platz platz in Queue        
 
         //wifi_csi_info_t *csi = (wifi_csi_info_t*) malloc(sizeof(wifi_csi_info_t));
+=======
+void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data)
+{  // wird jedes Mal beim Erhalt eines CSI Paketes aufgerufen
+    xSemaphoreTake(mutex, portMAX_DELAY);
+
+    char mac[20];
+    sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", data[0].mac[0], data[0].mac[1], data[0].mac[2], data[0].mac[3], data[0].mac[4], data[0].mac[5]);
+    int mac_s = strcmp(mac, "7C:9E:BD:65:B2:3D");
+
+    if (mac_s != 0)
+        printf("%d\n", mac_s);
+
+    if (uxQueueSpacesAvailable(data_queue) > 0 && mac_s == 0) {  // wennn platz platz in Queue
+        wifi_csi_info_t *csi = (wifi_csi_info_t *)malloc(sizeof(wifi_csi_info_t));
+
+        if (csi != NULL || csi->buf != NULL) {  // speicher konnte alloziiert werden
+>>>>>>> 1b895b7 (bug fixes)
 
         if (csi != NULL ){       // speicher konnte alloziiert werden
     	    /*
             // kopieren der daten in den zu beginn alloziierten speicher
             memcpy(csi, data, sizeof(wifi_csi_info_t));
+<<<<<<< HEAD
             csi->buf = (int8_t*) malloc(sizeof(int8_t)*data->len);
             memcpy(csi->buf, data->buf, sizeof(int8_t)*data->len);
             */
@@ -57,19 +76,34 @@ void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) {        // wird jedes Mal b
         }else{
             //free(csi->buf);
             //free(csi);
+=======
+
+            // Pointer auf daten in Queuelegen
+            if (xQueueSend(data_queue, &csi, portMAX_DELAY) == pdPASS) {
+                printf("CSI data was placed into queue.. \n");
+            }
+            else {
+                free(csi);
+            }
+        }
+        else {
+            free(csi);
+>>>>>>> 1b895b7 (bug fixes)
         }
     }
     xSemaphoreGive(mutex);
 }
 
-    ///////////////////////     ENDE MEIN CODE     ///////////////////////////
+///////////////////////     ENDE MEIN CODE     ///////////////////////////
 
-void _print_csi_csv_header() {
-    char *header_str = (char *) "type,role,mac,rssi,rate,sig_mode,mcs,bandwidth,smoothing,not_sounding,aggregation,stbc,fec_coding,sgi,noise_floor,ampdu_cnt,channel,secondary_channel,local_timestamp,ant,sig_len,rx_state,real_time_set,real_timestamp,len,CSI_DATA\n";
+void _print_csi_csv_header()
+{
+    char *header_str = (char *)"type,role,mac,rssi,rate,sig_mode,mcs,bandwidth,smoothing,not_sounding,aggregation,stbc,fec_coding,sgi,noise_floor,ampdu_cnt,channel,secondary_channel,local_timestamp,ant,sig_len,rx_state,real_time_set,real_timestamp,len,CSI_DATA\n";
     outprintf(header_str);
 }
 
-void csi_init(char *type) {
+void csi_init(char *type)
+{
     project_type = type;
 
 #ifdef CONFIG_SHOULD_COLLECT_CSI
@@ -91,4 +125,4 @@ void csi_init(char *type) {
 #endif
 }
 
-#endif //ESP32_CSI_CSI_COMPONENT_H
+#endif  // ESP32_CSI_CSI_COMPONENT_H

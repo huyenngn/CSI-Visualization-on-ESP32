@@ -86,7 +86,7 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
  *  STATIC VARIABLES
  **********************/
 static lv_obj_t *amp_chart, *phase_chart;
-static bool switch_tab;
+static bool switch_tab, plot_type;
 static uint8_t current_tab = 0;
 static lv_obj_t *tabview;
 static lv_group_t *g;
@@ -183,20 +183,8 @@ extern "C" void guiTask(void *pvParameter)
 
     // lv_3d_chart_add_cursor(amp_chart, 0, 0, 0);
 
-    // Phase chart
-    phase_chart = lv_3d_chart_create(screen, NULL);
+    wifi_csi_info_t *d;
 
-    // lv_3d_chart_add_cursor(phase_chart, 0, 0, 0);
-
-    lv_obj_set_hidden(phase_chart, true);
-
-    //wifi_csi_info_t *d;
-    uint16_t d[64];
-
-    // Übergabe arrays befüllen
-    lv_coord_t* subc = (lv_coord_t*)malloc(64 * sizeof(lv_coord_t));
-    lv_coord_t* amp = (lv_coord_t*)malloc(64 * sizeof(lv_coord_t));
-    
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10));
 
@@ -207,29 +195,29 @@ extern "C" void guiTask(void *pvParameter)
 
             if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
 
-                uint16_t csi_len = d->len;
+                uint16_t csi_len = (d->len) / 2;
                 int8_t *csi_data = d->buf;
 
                 // Übergabe arrays befüllen
-                lv_coord_t subc[csi_len / 2];
-                lv_coord_t amp[csi_len / 2];
-                lv_coord_t phase[csi_len / 2];
+                lv_coord_t subc[csi_len];
+                lv_coord_t ret[csi_len];
 
                 int16_t i = 0;
                 printf("******************************\n");
-                while (i < csi_len / 2) {
+                while (i < csi_len) {
                     subc[i] = i;
-                    if ((i < 3) || (i > 60)) {
-                        amp[i] = 0;
+                    if ((i < 3) || (i > (csi_len - 3))) {
+                        ret[i] = 0;
                     }
                     else {
-                        amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
-                        if (amp[i] > 100) {
-                            // printf("\n*****%d, %d****\n", csi_data[i * 2], csi_data[i * 2+1]);
+                        if (plot_type) {
+                            ret[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                        }
+                        else {
+                            ret[i] = 200 * (atan2(csi_data[i * 2], csi_data[(i * 2) + 1])+3.2)/6;
+                            printf("%d, ", ret[i]);
                         }
                     }
-                    // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
-                    printf("%d, ", amp[i]);
                     i++;
                 }
                 printf("\n");
@@ -237,7 +225,7 @@ extern "C" void guiTask(void *pvParameter)
                 // Plotfunktion übergeben
                 // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
 
-                lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
+                lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&ret, csi_len);
 
                 // free(d->buf;);
                 free(d);
@@ -266,14 +254,12 @@ static void plot_handler(lv_obj_t *obj, lv_event_t event)
         int16_t val = lv_slider_get_value(obj);
         switch (val) {
             case 0:
+                plot_type = true;
                 snprintf(buf, 20, "amplitude");
-                lv_obj_set_hidden(amp_chart, false);
-                lv_obj_set_hidden(phase_chart, true);
                 break;
             case 1:
+                plot_type = false;
                 snprintf(buf, 20, "phase");
-                lv_obj_set_hidden(amp_chart, true);
-                lv_obj_set_hidden(phase_chart, false);
                 break;
             default:
                 break;
@@ -354,6 +340,7 @@ static void show_menu(lv_obj_t *screen)
     lv_page_set_scrlbar_mode(tab3, LV_SCRLBAR_MODE_OFF);
 
     // Configure Plot
+    plot_type = true;
     lv_obj_t *plot_slider = lv_slider_create(tab1, NULL);
     lv_obj_set_width(plot_slider, width - 10);
     lv_obj_align(plot_slider, NULL, LV_ALIGN_IN_LEFT_MID, 5, 0);
@@ -555,7 +542,7 @@ extern "C" void app_main()
 
     // für task visualize_data sind erstmal 1 kByte reserviert und Priorität liegt bei zwei
 
-    xTaskCreatePinnedToCore(guiTask, "gui", 10000, NULL, 100, NULL, 1);
+    xTaskCreatePinnedToCore(guiTask, "gui", 20000, NULL, 100, NULL, 1);
 
     ///////////////////////////////////////////////////
 }
