@@ -24,28 +24,39 @@ static const int data_queue_len = 1;                                            
 
 const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t));         // Queue erstellen
 
+//wifi_csi_info_t csi;
+
+uint16_t csi[64];
+
 void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) {        // wird jedes Mal beim Erhalt eines CSI Paketes aufgerufen
     xSemaphoreTake(mutex, portMAX_DELAY);
 
+    for (int i=0; i<64; i++) {
+        csi[i] = sqrt(pow(data->buf[i * 2], 2) + pow(data->buf[(i * 2) + 1], 2));
+    }
+
     if (uxQueueSpacesAvailable(data_queue)>0){  // wennn platz platz in Queue        
 
-        wifi_csi_info_t *csi = (wifi_csi_info_t*) malloc(sizeof(wifi_csi_info_t));
+        //wifi_csi_info_t *csi = (wifi_csi_info_t*) malloc(sizeof(wifi_csi_info_t));
 
-        if (csi != NULL || csi->buf != NULL){       // speicher konnte alloziiert werden
-
+        if (csi != NULL ){       // speicher konnte alloziiert werden
+    	    /*
             // kopieren der daten in den zu beginn alloziierten speicher
-            csi->buf = data->buf;
             memcpy(csi, data, sizeof(wifi_csi_info_t));
-            
+            csi->buf = (int8_t*) malloc(sizeof(int8_t)*data->len);
+            memcpy(csi->buf, data->buf, sizeof(int8_t)*data->len);
+            */
             // Pointer auf daten in Queuelegen
-            if (xQueueSend(data_queue, &csi, portMAX_DELAY)==pdPASS){
+            if (xQueueSend(data_queue, (void*) &csi, portMAX_DELAY)==pdPASS){
                 printf("CSI data was placed into queue.. \n");
             }else{
-                free(csi);
+                //free(csi->buf);
+                //free(csi);
             }
 
         }else{
-            free(csi);
+            //free(csi->buf);
+            //free(csi);
         }
     }
     xSemaphoreGive(mutex);

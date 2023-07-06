@@ -191,8 +191,13 @@ extern "C" void guiTask(void *pvParameter)
 
     lv_obj_set_hidden(phase_chart, true);
 
-    wifi_csi_info_t *d;
+    //wifi_csi_info_t *d;
+    uint16_t d[64];
 
+    // Übergabe arrays befüllen
+    lv_coord_t* subc = (lv_coord_t*)malloc(64 * sizeof(lv_coord_t));
+    lv_coord_t* amp = (lv_coord_t*)malloc(64 * sizeof(lv_coord_t));
+    
     while (1) {
         vTaskDelay(10);
 
@@ -204,32 +209,41 @@ extern "C" void guiTask(void *pvParameter)
 
         if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
 
-            uint16_t csi_len = d->len;
-            int8_t *csi_data = d->buf;
-
-            // Übergabe arrays befüllen
-            lv_coord_t subc[csi_len];
-            lv_coord_t amp[csi_len];
-            lv_coord_t phase[csi_len];
-            for (int i = 0; i < csi_len; i++) {
-            }
-            int16_t i = 0;
-            while (i < csi_len / 2) {
-                subc[i] = i;
-                amp[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+            uint16_t csi_len = 64; //d->len;
+            //int8_t* csi_data = d->buf;
+            
+            
+            //lv_coord_t phase[csi_len/2];
+            //printf("%d \n", csi_len);
+            //subc[0] = (lv_coord_t)7;
+            //amp[100] = (lv_coord_t)7;
+            
+            uint16_t i = 0;
+            
+            printf("%d  \n", d[7]);
+            
+            while (i < csi_len) {
+                subc[i] = (lv_coord_t)i;
+                amp[i] = (lv_coord_t)d[i];//sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
                 // phase[i] = atan2(csi_data[i*2], csi_data[(i*2)+1]);
-                i = i + 5;
+                i++;
             }
+        
 
             // Plotfunktion übergeben
-            // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
-
-            lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, csi_len);
-
+            //lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
+            vTaskDelay(10);
+            volatile TickType_t zeit = xTaskGetTickCount();
+            lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&amp, 64);
+            printf("%u", xTaskGetTickCount()-zeit);
             // free(d->buf;);
-            free(d);
+
+            //free(d->buf);
+            //free(d);
         }
     }
+    //free(subc);
+    //free(amp);
     /* A task should NEVER return */
     free(buf1);
 #ifndef CONFIG_LV_TFT_DISPLAY_MONOCHROME
