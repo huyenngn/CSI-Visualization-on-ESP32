@@ -23,11 +23,7 @@
 #include "lvgl_helpers.h"
 
 /* CSI-Tool specific */
-#include "../_components/nvs_component.h"
-#include "../_components/sd_component.h"
-#include "../_components/csi_component.h"
-#include "../_components/input_component.h"
-#include "../_components/sockets_component.h"
+#include "csi_tool/csi_tool.h"
 
 /*********************
  *      DEFINES
@@ -35,6 +31,7 @@
 #define LV_TICK_PERIOD_MS 1
 #define LEFT_BUTTON_PIN GPIO_NUM_0
 #define RIGHT_BUTTON_PIN GPIO_NUM_35
+#define MAX_TABS 2
 
 /*
  * The examples use WiFi configuration that you can set via 'idf.py menuconfig'.
@@ -85,20 +82,32 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
 /**********************
  *  STATIC VARIABLES
  **********************/
-static lv_obj_t *amp_chart, *phase_chart;
+static lv_obj_t *chart;
 static bool switch_tab, plot_type;
-static uint8_t current_tab = 0;
+static int16_t update_interval, current_tab;
 static lv_obj_t *tabview;
 static lv_group_t *g;
-static lv_obj_t *plot_label, *subc_label, *interval_label;
+static lv_obj_t *plot_label, *interval_label;
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+
+static const char *TAG = "Active CSI collection (Station)";
+
+/* The event group allows multiple bits for each event, but we only care about one event
+ * - are we connected to the AP with an IP? */
+const int WIFI_CONNECTED_BIT = BIT0;
 
 /* Creates a semaphore to handle concurrent call to lvgl stuff
  * If you wish to call *any* lvgl function from other threads/tasks
  * you should lock on the very same semaphore! */
 SemaphoreHandle_t xGuiSemaphore;
 
-extern "C" void guiTask(void *pvParameter)
-{
+/**********************
+ *    VISUALIZE CSI
+ **********************/
+
+extern "C" void guiTask(void *pvParameter) {
     (void)pvParameter;
     xGuiSemaphore = xSemaphoreCreateMutex();
 
@@ -172,16 +181,13 @@ extern "C" void guiTask(void *pvParameter)
     gpio_set_direction(LEFT_BUTTON_PIN, GPIO_MODE_INPUT);
     gpio_set_direction(RIGHT_BUTTON_PIN, GPIO_MODE_INPUT);
 
-    // Create a screen
+    /* Render UI */
     lv_obj_t *screen = lv_scr_act();
-
-    // Render UI
     show_menu(screen);
 
-    // Amp chart
-    amp_chart = lv_3d_chart_create(screen, NULL);
+    chart = lv_3d_chart_create(screen, NULL);
 
-    // lv_3d_chart_add_cursor(amp_chart, 0, 0, 0);
+    // lv_3d_chart_add_cursor(chart, 0, 0, 0);
 
     wifi_csi_info_t *d;
 
@@ -193,39 +199,37 @@ extern "C" void guiTask(void *pvParameter)
             lv_task_handler();
             xSemaphoreGive(xGuiSemaphore);
 
-            if (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE) {  // Daten aus queue holen, checke alle 0 ms falls voll
-
+            /* Get raw data from queue */
+            if (xQueueReceive(data_queue, &d, pdMS_TO_TICKS(update_interval)) == pdTRUE) {
                 uint16_t csi_len = (d->len) / 2;
                 int8_t *csi_data = d->buf;
 
-                // Übergabe arrays befüllen
                 lv_coord_t subc[csi_len];
-                lv_coord_t ret[csi_len];
+                lv_coord_t ret[csi_len] = {0};
 
-                int16_t i = 0;
                 printf("******************************\n");
-                while (i < csi_len) {
+
+                /* Caculate CSI from raw data. First and last 3 are null subcarrier. */
+                int16_t i = 3;
+                while (i < csi_len - 3) {
                     subc[i] = i;
-                    if ((i < 3) || (i > (csi_len - 3))) {
-                        ret[i] = 0;
+
+                    if (plot_type) {
+                        /* Calculate amplitude */
+                        ret[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                    } else {
+                        /* Calculate phase */
+                        ret[i] = 200 * (atan2(csi_data[i * 2], csi_data[(i * 2) + 1]) + 3.2) / 6;
+                        printf("%d, ", ret[i]);
                     }
-                    else {
-                        if (plot_type) {
-                            ret[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
-                        }
-                        else {
-                            ret[i] = 200 * (atan2(csi_data[i * 2], csi_data[(i * 2) + 1])+3.2)/6;
-                            printf("%d, ", ret[i]);
-                        }
-                    }
+
                     i++;
                 }
+
                 printf("\n");
 
-                // Plotfunktion übergeben
-                // lv_3d_chart_set_points(phase_chart, lv_3d_chart_add_series(phase_chart), (lv_coord_t *)&subc, (lv_coord_t *)&phase, csi_len);
-
-                lv_3d_chart_set_points(amp_chart, lv_3d_chart_add_series(amp_chart), (lv_coord_t *)&subc, (lv_coord_t *)&ret, csi_len);
+                /* Plot CSI */
+                lv_3d_chart_set_points(chart, lv_3d_chart_add_series(chart), (lv_coord_t *)&subc, (lv_coord_t *)&ret, csi_len);
 
                 // free(d->buf;);
                 free(d);
@@ -240,85 +244,66 @@ extern "C" void guiTask(void *pvParameter)
     vTaskDelete(NULL);
 }
 
-static void lv_tick_task(void *arg)
-{
+static void lv_tick_task(void *arg) {
     (void)arg;
 
     lv_tick_inc(LV_TICK_PERIOD_MS);
 }
 
-static void plot_handler(lv_obj_t *obj, lv_event_t event)
-{
+static void plot_handler(lv_obj_t *obj, lv_event_t event) {
     if (event == LV_EVENT_VALUE_CHANGED) {
         static char buf[20];
         int16_t val = lv_slider_get_value(obj);
-        switch (val) {
-            case 0:
-                plot_type = true;
-                snprintf(buf, 20, "amplitude");
-                break;
-            case 1:
-                plot_type = false;
-                snprintf(buf, 20, "phase");
-                break;
-            default:
-                break;
+        if (val == 0) {
+            plot_type = true;
+            snprintf(buf, 20, "amplitude");
+        } else {
+            plot_type = false;
+            snprintf(buf, 20, "phase");
         }
 
         lv_label_set_text(plot_label, buf);
     }
 }
 
-static void subc_handler(lv_obj_t *obj, lv_event_t event)
-{
+static void interval_handler(lv_obj_t *obj, lv_event_t event) {
     if (event == LV_EVENT_VALUE_CHANGED) {
-        static char buf[11];
-        snprintf(buf, 11, "%d kHz", lv_slider_get_value(obj));
-        lv_label_set_text(subc_label, buf);
-    }
-}
-
-static void interval_handler(lv_obj_t *obj, lv_event_t event)
-{
-    if (event == LV_EVENT_VALUE_CHANGED) {
-        static char buf[8];
-        snprintf(buf, 8, "%u Hz", lv_slider_get_value(obj));
+        static char buf[10];
+        int16_t val = lv_slider_get_value(obj)*10;
+        snprintf(buf, 10, "%u Hz", val);
         lv_label_set_text(interval_label, buf);
+
+        update_interval = 1000 / val;
     }
 }
 
-static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data)
-{
+static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
     data->state = LV_INDEV_STATE_PR;
 
     if (gpio_get_level(LEFT_BUTTON_PIN) && gpio_get_level(RIGHT_BUTTON_PIN)) {
         switch_tab = true;
         data->state = LV_INDEV_STATE_REL;
-    }
-    else if (!gpio_get_level(LEFT_BUTTON_PIN) && !gpio_get_level(RIGHT_BUTTON_PIN)) {
+    } else if (!gpio_get_level(LEFT_BUTTON_PIN) && !gpio_get_level(RIGHT_BUTTON_PIN)) {
         if (switch_tab) {
-            current_tab = (current_tab == 2) ? 0 : current_tab + 1;
+            current_tab = (current_tab == MAX_TABS - 1) ? 0 : current_tab + 1;
             lv_tabview_set_tab_act(tabview, current_tab, LV_ANIM_ON);
             lv_group_focus_next(g);
             switch_tab = false;
         }
-    }
-    else if (!gpio_get_level(LEFT_BUTTON_PIN)) {
+    } else if (!gpio_get_level(LEFT_BUTTON_PIN)) {
         data->key = LV_KEY_LEFT;
-    }
-    else if (!gpio_get_level(RIGHT_BUTTON_PIN)) {
+    } else if (!gpio_get_level(RIGHT_BUTTON_PIN)) {
         data->key = LV_KEY_RIGHT;
     }
 
     return false; /*No buffering now so no more data read*/
 }
 
-static void show_menu(lv_obj_t *screen)
-{
+static void show_menu(lv_obj_t *screen) {
     lv_coord_t width = LV_HOR_RES;
     lv_coord_t height = LV_VER_RES - MAX_VER;
 
-    // Menu controller
+    /* Input device drivers */
     lv_indev_drv_t indev_drv;
     lv_indev_drv_init(&indev_drv);
     indev_drv.type = LV_INDEV_TYPE_KEYPAD;
@@ -331,15 +316,14 @@ static void show_menu(lv_obj_t *screen)
     lv_obj_set_size(tabview, width, height);
     lv_obj_align(tabview, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 0, 0);
     lv_tabview_set_btns_pos(tabview, LV_TABVIEW_TAB_POS_NONE);
+    current_tab = 0;
 
     lv_obj_t *tab1 = lv_tabview_add_tab(tabview, "Tab 1");
     lv_page_set_scrlbar_mode(tab1, LV_SCRLBAR_MODE_OFF);
     lv_obj_t *tab2 = lv_tabview_add_tab(tabview, "Tab 2");
     lv_page_set_scrlbar_mode(tab2, LV_SCRLBAR_MODE_OFF);
-    lv_obj_t *tab3 = lv_tabview_add_tab(tabview, "Tab 3");
-    lv_page_set_scrlbar_mode(tab3, LV_SCRLBAR_MODE_OFF);
 
-    // Configure Plot
+    /* Configure Plot */
     plot_type = true;
     lv_obj_t *plot_slider = lv_slider_create(tab1, NULL);
     lv_obj_set_width(plot_slider, width - 10);
@@ -362,47 +346,27 @@ static void show_menu(lv_obj_t *screen)
 
     lv_label_set_text(plot_info, "Choose plot");
 
-    // Configure OFDM subcarrier
-    lv_obj_t *subc_slider = lv_slider_create(tab2, plot_slider);
-    lv_slider_set_type(subc_slider, true);
-    lv_slider_set_range(subc_slider, -27, 27);
-    lv_obj_set_event_cb(subc_slider, subc_handler);
-    lv_group_add_obj(g, subc_slider);
-
-    subc_label = lv_label_create(tab2, plot_label);
-    lv_obj_align(subc_label, subc_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
-    lv_label_set_text(subc_label, "0 kHz");
-
-    lv_obj_t *subc_info = lv_label_create(tab2, plot_info);
-    lv_label_set_text(subc_info, "Configure OFDM subcarrier");
-
-    // Configure update interval
-    lv_obj_t *interval_slider = lv_slider_create(tab3, plot_slider);
-    lv_slider_set_range(interval_slider, 0, 10);
+    /* Configure update interval */
+    lv_obj_t *interval_slider = lv_slider_create(tab2, plot_slider);
+    lv_slider_set_range(interval_slider, 1, 10);
     lv_obj_set_event_cb(interval_slider, interval_handler);
+    lv_slider_set_value(interval_slider, 10, LV_ANIM_OFF);
+    update_interval = 100;
     lv_group_add_obj(g, interval_slider);
 
-    interval_label = lv_label_create(tab3, plot_label);
+    interval_label = lv_label_create(tab2, plot_label);
     lv_obj_align(interval_label, interval_slider, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
     lv_label_set_text(interval_label, "0 Hz");
 
-    lv_obj_t *interval_info = lv_label_create(tab3, plot_info);
+    lv_obj_t *interval_info = lv_label_create(tab2, plot_info);
     lv_label_set_text(interval_info, "Configure update interval");
 }
 
-///////////////////////     ENDE MEIN CODE     ///////////////////////////
+/**********************
+ *    COLLECT CSI
+ **********************/
 
-/* FreeRTOS event group to signal when we are connected*/
-static EventGroupHandle_t s_wifi_event_group;
-
-/* The event group allows multiple bits for each event, but we only care about one event
- * - are we connected to the AP with an IP? */
-const int WIFI_CONNECTED_BIT = BIT0;
-
-static const char *TAG = "Active CSI collection (Station)";
-
-esp_err_t _http_event_handle(esp_http_client_event_t *evt)
-{
+esp_err_t _http_event_handle(esp_http_client_event_t *evt) {
     switch (evt->event_id) {
         case HTTP_EVENT_ON_DATA:
             ESP_LOGI(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
@@ -426,30 +390,25 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 esp_err_t esp_wifi_80211_tx(wifi_interface_t ifx, const void *buffer, int len, bool en_sys_seq);
 
 static void event_handler(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data)
-{
+                          int32_t event_id, void *event_data) {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
-    }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         ESP_LOGI(TAG, "Retry connecting to the AP");
         esp_wifi_connect();
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-    }
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "Got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
     }
 }
 
-bool is_wifi_connected()
-{
+bool is_wifi_connected() {
     return (xEventGroupGetBits(s_wifi_event_group) & WIFI_CONNECTED_BIT);
 }
 
-void station_init()
-{
+void station_init() {
     s_wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_netif_init());
@@ -491,17 +450,13 @@ void station_init()
     ESP_LOGI(TAG, "connect to ap SSID:%s password:%s", ESP_WIFI_SSID, ESP_WIFI_PASS);
 }
 
-TaskHandle_t xHandle = NULL;
-
-void vTask_socket_transmitter_sta_loop(void *pvParameters)
-{
+void vTask_socket_transmitter_sta_loop(void *pvParameters) {
     for (;;) {
         socket_transmitter_sta_loop(&is_wifi_connected);
     }
 }
 
-void config_print()
-{
+void config_print() {
     printf("\n\n\n\n\n\n\n\n");
     printf("-----------------------\n");
     printf("ESP32 CSI Tool Settings\n");
@@ -523,8 +478,10 @@ void config_print()
     printf("\n\n\n\n\n\n\n\n");
 }
 
-extern "C" void app_main()
-{
+/**********************
+ *   APPLICATION MAIN
+ **********************/
+extern "C" void app_main() {
     config_print();
     nvs_init();
     sd_init();
@@ -535,14 +492,10 @@ extern "C" void app_main()
     printf("CSI will not be collected. Check `idf.py menuconfig  # > ESP32 CSI Tool Config` to enable CSI");
 #endif
 
+    TaskHandle_t xHandle = NULL;
+
     xTaskCreatePinnedToCore(&vTask_socket_transmitter_sta_loop, "socket_transmitter_sta_loop",
                             10000, (void *)&is_wifi_connected, 100, &xHandle, 0);
 
-    /////////////// HIER TASK ERSTELLEN ///////////////
-
-    // für task visualize_data sind erstmal 1 kByte reserviert und Priorität liegt bei zwei
-
     xTaskCreatePinnedToCore(guiTask, "gui", 20000, NULL, 100, NULL, 1);
-
-    ///////////////////////////////////////////////////
 }
