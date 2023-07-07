@@ -8,23 +8,17 @@ Before starting, install Espressif IoT Development Framework (ESP-IDF) by follow
 1. Clone this repository and navigate to the `CSI-Visualization-on-ESP32` repository:
 
 ```
-git clone --recurse https://github.com/huyenngn/CSI-Visualization-on-ESP32.git
+git clone --recurse-submodules https://github.com/huyenngn/CSI-Visualization-on-ESP32.git
 cd CSI-Visualization-on-ESP32
 
 ```
 
-2. Set ESP32 chip as the target and run the project configuration utility `menuconfig`:
-```
-idf.py set-target esp32
-idf.py menuconfig
-```
-
-3. Build the project by running:
+2. Build the project by running:
 ```
 idf.py build
 ```
 
-4. If the build didn't throw any errors, flash the demo with:
+3. If the build didn't throw any errors, flash the demo with:
 ```
 idf.py -p (YOUR SERIAL PORT) flash
 ```
