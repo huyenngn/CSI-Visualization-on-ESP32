@@ -39,8 +39,8 @@
  * If you'd rather not, just change the below entries to strings with
  * the config you want - ie #define ESP_WIFI_SSID "mywifissid"
  */
-#define ESP_WIFI_SSID "csicsicsi"    // CONFIG_ESP_WIFI_SSID
-#define ESP_WIFI_PASS "csipassword"  // CONFIG_ESP_WIFI_PASSWORD
+#define ESP_WIFI_SSID CONFIG_ESP_WIFI_SSID
+#define ESP_WIFI_PASS CONFIG_ESP_WIFI_PASSWORD
 
 #ifdef CONFIG_WIFI_CHANNEL
 #define WIFI_CHANNEL CONFIG_WIFI_CHANNEL
@@ -83,8 +83,9 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
  *  STATIC VARIABLES
  **********************/
 static lv_obj_t *chart;
-static bool switch_tab, plot_type;
-static int16_t update_interval, current_tab;
+static bool switch_tab;
+static uint32_t last_tick, update_interval;
+static int16_t current_tab, plot_type;
 static lv_obj_t *tabview;
 static lv_group_t *g;
 static lv_obj_t *plot_label, *interval_label;
@@ -190,6 +191,8 @@ extern "C" void guiTask(void *pvParameter) {
     // lv_3d_chart_add_cursor(chart, 0, 0, 0);
 
     wifi_csi_info_t *d;
+        vTaskStartScheduler();
+    last_tick = xTaskGetTickCount();
 
     while (1) {
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -200,33 +203,37 @@ extern "C" void guiTask(void *pvParameter) {
             xSemaphoreGive(xGuiSemaphore);
 
             /* Get raw data from queue */
-            if (xQueueReceive(data_queue, &d, pdMS_TO_TICKS(update_interval)) == pdTRUE) {
+            if (xTaskGetTickCount() > (last_tick + update_interval) && (xQueueReceive(data_queue, &d, portMAX_DELAY) == pdTRUE)) {
+                last_tick = xTaskGetTickCount();
                 uint16_t csi_len = (d->len) / 2;
                 int8_t *csi_data = d->buf;
 
                 lv_coord_t subc[csi_len];
                 lv_coord_t ret[csi_len] = {0};
 
-                printf("******************************\n");
-
                 /* Caculate CSI from raw data. First and last 3 are null subcarrier. */
                 int16_t i = 3;
-                while (i < csi_len - 3) {
-                    subc[i] = i;
 
-                    if (plot_type) {
-                        /* Calculate amplitude */
-                        ret[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
-                    } else {
-                        /* Calculate phase */
-                        ret[i] = 200 * (atan2(csi_data[i * 2], csi_data[(i * 2) + 1]) + 3.2) / 6;
-                        printf("%d, ", ret[i]);
-                    }
-
-                    i++;
+                switch (plot_type) {
+                    case 0:
+                        while (i < csi_len - 3) {
+                            subc[i] = i;
+                            /* Calculate amplitude */
+                            ret[i] = sqrt(pow(csi_data[i * 2], 2) + pow(csi_data[(i * 2) + 1], 2));
+                            i++;
+                        }
+                        break;
+                    case 1:
+                        while (i < csi_len - 3) {
+                            subc[i] = i;
+                            /* Calculate phase */
+                            ret[i] = 200 * (atan2(csi_data[i * 2], csi_data[(i * 2) + 1]) + 3.2) / 6;
+                            i++;
+                        }
+                        break;
+                    default:
+                        break;
                 }
-
-                printf("\n");
 
                 /* Plot CSI */
                 lv_3d_chart_set_points(chart, lv_3d_chart_add_series(chart), (lv_coord_t *)&subc, (lv_coord_t *)&ret, csi_len);
@@ -253,13 +260,17 @@ static void lv_tick_task(void *arg) {
 static void plot_handler(lv_obj_t *obj, lv_event_t event) {
     if (event == LV_EVENT_VALUE_CHANGED) {
         static char buf[20];
-        int16_t val = lv_slider_get_value(obj);
-        if (val == 0) {
-            plot_type = true;
-            snprintf(buf, 20, "amplitude");
-        } else {
-            plot_type = false;
-            snprintf(buf, 20, "phase");
+        plot_type = lv_slider_get_value(obj);
+
+        switch (plot_type) {
+            case 0:
+                snprintf(buf, 20, "amplitude");
+                break;
+            case 1:
+                snprintf(buf, 20, "phase");
+                break;
+            default:
+                break;
         }
 
         lv_label_set_text(plot_label, buf);
@@ -269,7 +280,7 @@ static void plot_handler(lv_obj_t *obj, lv_event_t event) {
 static void interval_handler(lv_obj_t *obj, lv_event_t event) {
     if (event == LV_EVENT_VALUE_CHANGED) {
         static char buf[10];
-        int16_t val = lv_slider_get_value(obj)*10;
+        int16_t val = lv_slider_get_value(obj);
         snprintf(buf, 10, "%u Hz", val);
         lv_label_set_text(interval_label, buf);
 
@@ -301,7 +312,7 @@ static bool keyboard_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
 
 static void show_menu(lv_obj_t *screen) {
     lv_coord_t width = LV_HOR_RES;
-    lv_coord_t height = LV_VER_RES - MAX_VER;
+    lv_coord_t height = LV_VER_RES - 160;
 
     /* Input device drivers */
     lv_indev_drv_t indev_drv;
