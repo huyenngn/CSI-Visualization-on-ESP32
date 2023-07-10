@@ -6,36 +6,28 @@
 #include <sstream>
 #include <iostream>
 
+#define QUEUE_LEN 1
+#define MAC_AP "7C:9E:BD:65:B2:3D"
+#define USE_MAC_FILTER true
+
 char *project_type;
-
-/*
-#define CSI_RAW 1
-#define CSI_AMPLITUDE 0
-#define CSI_PHASE 0
-
-#define CSI_TYPE CSI_RAW
-*/
-
 SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
 
-///////////////////////    BEGINN MEIN CODE    ///////////////////////////
-
-static const int data_queue_len = 1;  // Länge der Queue
-
-const QueueHandle_t data_queue = xQueueCreate(data_queue_len, sizeof(wifi_csi_info_t));  // Queue erstellen
+const QueueHandle_t data_queue = xQueueCreate(QUEUE_LEN, sizeof(wifi_csi_info_t));  // Queue erstellen
 
 void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data)
 {  // wird jedes Mal beim Erhalt eines CSI Paketes aufgerufen
     xSemaphoreTake(mutex, portMAX_DELAY);
 
-    char mac[20];
-    sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X", data[0].mac[0], data[0].mac[1], data[0].mac[2], data[0].mac[3], data[0].mac[4], data[0].mac[5]);
-    int mac_s = strcmp(mac, "7C:9E:BD:65:B2:3D");
+    char mac_sta[20];
+    sprintf(mac_sta, "%02X:%02X:%02X:%02X:%02X:%02X", data[0].mac[0], data[0].mac[1], data[0].mac[2], data[0].mac[3], data[0].mac[4], data[0].mac[5]);
 
-    if (mac_s != 0)
-        printf("%d\n", mac_s);
+    int mac_filter = 0;
+    if (USE_MAC_FILTER) {
+        mac_filter = strcmp(mac_sta, MAC_AP);
+    }
 
-    if (uxQueueSpacesAvailable(data_queue) > 0 && mac_s == 0) {  // wennn platz platz in Queue
+    if (uxQueueSpacesAvailable(data_queue) > 0 && mac_filter == 0) {  // wennn platz platz in Queue
         wifi_csi_info_t *csi = (wifi_csi_info_t *)malloc(sizeof(wifi_csi_info_t));
 
         if (csi != NULL || csi->buf != NULL) {  // speicher konnte alloziiert werden
@@ -58,8 +50,6 @@ void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data)
     }
     xSemaphoreGive(mutex);
 }
-
-///////////////////////     ENDE MEIN CODE     ///////////////////////////
 
 void _print_csi_csv_header()
 {

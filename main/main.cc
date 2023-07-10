@@ -191,7 +191,7 @@ extern "C" void guiTask(void *pvParameter) {
     // lv_3d_chart_add_cursor(chart, 0, 0, 0);
 
     wifi_csi_info_t *d;
-        vTaskStartScheduler();
+    vTaskStartScheduler();
     last_tick = xTaskGetTickCount();
 
     while (1) {
