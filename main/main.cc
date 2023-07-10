@@ -238,7 +238,6 @@ extern "C" void guiTask(void *pvParameter) {
                 /* Plot CSI */
                 lv_3d_chart_set_points(chart, lv_3d_chart_add_series(chart), (lv_coord_t *)&subc, (lv_coord_t *)&ret, csi_len);
 
-                // free(d->buf;);
                 free(d);
             }
         }
