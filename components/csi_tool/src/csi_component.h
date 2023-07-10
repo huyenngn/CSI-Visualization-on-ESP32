@@ -13,30 +13,37 @@
 char *project_type;
 SemaphoreHandle_t mutex = xSemaphoreCreateMutex();
 
+// initialize and allocate memory for queue to place the csi data in
 const QueueHandle_t data_queue = xQueueCreate(QUEUE_LEN, sizeof(wifi_csi_info_t));  // Queue erstellen
 
-void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data)
-{  // wird jedes Mal beim Erhalt eines CSI Paketes aufgerufen
+// csi cb function is called everytime a csi paket is received 
+void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data) 
+{  
+    // take sephamore to no be inerrupted
     xSemaphoreTake(mutex, portMAX_DELAY);
 
+    // extract mac adress from csi packet
     char mac_sta[20];
     sprintf(mac_sta, "%02X:%02X:%02X:%02X:%02X:%02X", data[0].mac[0], data[0].mac[1], data[0].mac[2], data[0].mac[3], data[0].mac[4], data[0].mac[5]);
 
+    // bool for mac filter
     int mac_filter = 0;
     if (USE_MAC_FILTER) {
         mac_filter = strcmp(mac_sta, MAC_AP);
     }
 
+    // if space in queue and paket is from desired AP
     if (uxQueueSpacesAvailable(data_queue) > 0 && mac_filter == 0) {  // wennn platz platz in Queue
+        // allocate persistent memory for data to be placed into
         wifi_csi_info_t *csi = (wifi_csi_info_t *)malloc(sizeof(wifi_csi_info_t));
 
-        if (csi != NULL || csi->buf != NULL) {  // speicher konnte alloziiert werden
+        if (csi != NULL || csi->buf != NULL) {   // memory allocation went through
 
-            // kopieren der daten in den zu beginn alloziierten speicher
+            // deepcopy of the data into new memory
             csi->buf = data->buf;
             memcpy(csi, data, sizeof(wifi_csi_info_t));
 
-            // Pointer auf daten in Queuelegen
+            // place pointer to the data into queue
             if (xQueueSend(data_queue, &csi, portMAX_DELAY) == pdPASS) {
                 printf("CSI data was placed into queue.. \n");
             }
@@ -48,7 +55,7 @@ void _wifi_csi_cb(void *ctx, wifi_csi_info_t *data)
             free(csi);
         }
     }
-    xSemaphoreGive(mutex);
+    xSemaphoreGive(mutex);      // give mutex back
 }
 
 void _print_csi_csv_header()
