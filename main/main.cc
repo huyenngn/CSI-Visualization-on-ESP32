@@ -335,7 +335,7 @@ static void show_menu(lv_obj_t *screen) {
     lv_page_set_scrlbar_mode(tab2, LV_SCRLBAR_MODE_OFF);
 
     /* Configure Plot */
-    plot_type = true;
+    plot_type = 0;
     lv_obj_t *plot_slider = lv_slider_create(tab1, NULL);
     lv_obj_set_width(plot_slider, width - 10);
     lv_obj_align(plot_slider, NULL, LV_ALIGN_IN_LEFT_MID, 5, 0);
